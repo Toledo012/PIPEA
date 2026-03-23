@@ -16,7 +16,9 @@ class User extends Authenticatable
      * The attributes that are mass assignable.
      *
      * @var list<string>
+     *
      */
+    protected $table = 'usuarios';
     protected $fillable = [
         'name',
         'email',
@@ -45,4 +47,11 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function rol()
+    {
+        return $this->belongsTo(\App\Models\Rol::class, 'id_rol');
+    }
 }
+
+
