@@ -1,285 +1,213 @@
 <script setup>
-import OrganismoLayout from  '@/Layouts/Organismolayout.vue'
+
+import OrganismoLayout from '@/Layouts/Organismolayout.vue'  // ★
 import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
+
 
 const props = defineProps({
-    stats: {
-        type: Object,
-        default: () => ({
-            lineasAsignadas:    0,
-            avancesRegistrados: 0,
-            observaciones:      0,
-            porcentajeAvance:   0,
-        }),
-    },
-    ultimosAvances: {
-        type: Array,
-        default: () => [],
-    },
+    lineas:    { type: Array,  default: () => [] },
+    historial: { type: Array,  default: () => [] },
+    metricas:  { type: Object, default: () => ({}) },
 })
 
-const page      = usePage()
-const usuario   = computed(() => page.props.auth?.user)
-const organismo = computed(() => usuario.value?.organismo?.nombre ?? 'Mi Organismo')
+const truncar = (texto, max = 70) =>
+    texto?.length > max ? texto.substring(0, max) + '...' : texto
 
-const saludo = computed(() => {
-    const hora = new Date().getHours()
-    if (hora < 12) return 'Buenos días'
-    if (hora < 19) return 'Buenas tardes'
-    return 'Buenas noches'
-})
-
-const tarjetas = computed(() => [
-    {
-        label: 'Líneas asignadas',
-        valor: props.stats.lineasAsignadas,
-        ico:   'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-        color: 'verde',
-    },
-    {
-        label: 'Avances registrados',
-        valor: props.stats.avancesRegistrados,
-        ico:   'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-        color: 'magenta',
-    },
-    {
-        label: 'Observaciones pendientes',
-        valor: props.stats.observaciones,
-        ico:   'M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
-        color: 'vino',
-    },
-    {
-        label: 'Avance general',
-        valor: `${props.stats.porcentajeAvance}%`,
-        ico:   'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
-        color: 'arena',
-    },
-])
-
-const pctWidth = computed(() => Math.min(100, Math.max(0, props.stats.porcentajeAvance)))
+const colorAvance = (pct) => {
+    if (pct >= 75) return 'avance-fill--verde'
+    if (pct >= 40) return 'avance-fill--amarillo'
+    return 'avance-fill--rojo'
+}
 </script>
 
 <template>
     <OrganismoLayout>
-        <div class="dash">
+    <div class="dashboard">
 
-            <!-- Encabezado -->
-            <div class="dash-head">
-                <div>
-                    <p class="dash-saludo">{{ saludo }}, {{ usuario?.nombre }}</p>
-                    <h1 class="dash-title">{{ organismo }}</h1>
-                </div>
-                <span class="badge-rol badge-rol--usuario_organismo">
-                    Organismo implementador
-                </span>
-            </div>
-
-            <!-- Barra de avance global -->
-            <div class="dash-avance-bar-wrap">
-                <div class="dash-avance-bar-head">
-                    <span class="dash-avance-bar-label">Avance general del organismo</span>
-                    <span class="dash-avance-bar-pct">{{ stats.porcentajeAvance }}%</span>
-                </div>
-                <div class="dash-avance-bar-track">
-                    <div class="dash-avance-bar-fill" :style="{ width: pctWidth + '%' }"></div>
-                </div>
-            </div>
-
-            <!-- Tarjetas -->
-            <div class="dash-grid">
-                <div
-                    v-for="t in tarjetas" :key="t.label"
-                    class="stat-card"
-                    :class="`stat-card--${t.color}`"
-                >
-                    <div class="stat-card-top">
-                        <div class="stat-ico" :class="`stat-ico--${t.color}`">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                <path :d="t.ico"/>
-                            </svg>
-                        </div>
-                        <p class="stat-valor">{{ t.valor }}</p>
-                    </div>
-                    <p class="stat-label">{{ t.label }}</p>
-                </div>
-            </div>
-
-            <!-- Cuerpo -->
-            <div class="dash-body">
-
-                <!-- Accesos rápidos -->
-                <div class="dash-panel">
-                    <h2 class="dash-panel-title">Accesos rápidos</h2>
-                    <div class="quick-list">
-
-                        <div class="quick-item">
-                            <div class="quick-ico quick-ico--verde">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="quick-label">Mis líneas de acción</p>
-                                <p class="quick-sub">Consultar líneas asignadas a tu organismo</p>
-                            </div>
-                            <svg class="quick-arrow" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-
-                        <div class="quick-item">
-                            <div class="quick-ico quick-ico--magenta">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="quick-label">Registrar avance</p>
-                                <p class="quick-sub">Capturar progreso de una línea</p>
-                            </div>
-                            <svg class="quick-arrow" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-
-                        <div class="quick-item">
-                            <div class="quick-ico quick-ico--vino">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="quick-label">Mis evidencias</p>
-                                <p class="quick-sub">Documentos y archivos subidos</p>
-                            </div>
-                            <svg class="quick-arrow" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-
-                        <div class="quick-item">
-                            <div class="quick-ico quick-ico--arena">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="quick-label">Mi reporte de avance</p>
-                                <p class="quick-sub">Resumen de cumplimiento</p>
-                            </div>
-                            <svg class="quick-arrow" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Últimos avances -->
-                <div class="dash-panel">
-                    <h2 class="dash-panel-title">Últimos avances registrados</h2>
-
-                    <div v-if="ultimosAvances.length === 0" class="dash-empty">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                             style="width:40px;height:40px;color:var(--color-gris-300);">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <p>Sin avances registrados aún.</p>
-                        <p class="dash-empty-sub">Usa el menú lateral para registrar el progreso de tus líneas.</p>
-                    </div>
-
-                    <div v-else class="avance-list">
-                        <div v-for="avance in ultimosAvances" :key="avance.id" class="avance-item">
-                            <div class="avance-dot"></div>
-                            <div class="avance-info">
-                                <p class="avance-linea">{{ avance.linea }}</p>
-                                <p class="avance-fecha">{{ avance.fecha }}</p>
-                            </div>
-                            <div class="avance-right">
-                                <span class="avance-pct">{{ avance.porcentaje }}%</span>
-                                <div class="avance-mini-bar">
-                                    <div class="avance-mini-fill" :style="{ width: avance.porcentaje + '%' }"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+        <!-- Header -->
+        <div class="dash-header">
+            <div>
+                <p class="dash-breadcrumb">Organismo implementador</p>
+                <h1 class="dash-title">Mis líneas de acción</h1>
             </div>
         </div>
-    </OrganismoLayout>
+
+        <!-- Métricas -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Total de líneas</span>
+                <span class="metric-val">{{ metricas.total }}</span>
+            </div>
+            <div class="metric-card metric-card--verde">
+                <span class="metric-label">Con avance</span>
+                <span class="metric-val">{{ metricas.conAvance }}</span>
+            </div>
+            <div class="metric-card metric-card--alerta">
+                <span class="metric-label">Sin avance</span>
+                <span class="metric-val">{{ metricas.sinAvance }}</span>
+            </div>
+            <div class="metric-card metric-card--azul">
+                <span class="metric-label">Avance promedio</span>
+                <span class="metric-val">{{ metricas.promedio }}%</span>
+            </div>
+        </div>
+
+        <div class="main-grid">
+
+            <!-- Listado de líneas -->
+            <div class="panel panel--lineas">
+                <p class="panel-title">Mis líneas</p>
+
+                <div v-if="lineas.length === 0" class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:40px;height:40px;color:var(--color-gris-300)">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <p>No tienes líneas de acción asignadas.</p>
+                </div>
+
+                <div v-for="l in lineas" :key="l.id" class="linea-card">
+                    <div class="linea-badges">
+                        <span class="badge-eje">Eje {{ String(l.numero_eje).padStart(2,'0') }}</span>
+                        <span class="badge-pri">Prior. {{ l.numero_prioridad }}</span>
+                        <span v-if="l.frecuencia" class="badge-frec">{{ l.frecuencia }}</span>
+                    </div>
+
+                    <p class="linea-desc" :title="l.prioridad">{{ truncar(l.prioridad) }}</p>
+
+                    <div v-if="l.nombre_indicador" class="linea-indicador">
+                        <span class="linea-indicador-label">Indicador:</span>
+                        {{ l.nombre_indicador }}
+                    </div>
+
+                    <!-- Barra de avance -->
+                    <div class="avance-section">
+                        <div class="avance-info">
+                            <span class="avance-label">Avance</span>
+                            <span class="avance-pct" :class="l.porcentaje_avance >= 75 ? 'avance-pct--verde' : l.porcentaje_avance >= 40 ? 'avance-pct--amarillo' : 'avance-pct--rojo'">
+                                {{ l.porcentaje_avance }}%
+                            </span>
+                        </div>
+                        <div class="avance-track">
+                            <div
+                                class="avance-fill"
+                                :class="colorAvance(l.porcentaje_avance)"
+                                :style="{ width: Math.min(l.porcentaje_avance, 100) + '%' }"
+                            ></div>
+                        </div>
+                        <div class="avance-meta">
+                            <span>{{ l.avance_cuantitativo }} / {{ l.meta ?? '—' }} {{ l.unidad_medida }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Botón ir al detalle -->
+                    <Link
+                        :href="route('organismo.lineas.show', l.id)"
+                        class="btn-linea"
+                    >
+                        Ver detalle y registrar avance
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </Link>
+                </div>
+            </div>
+
+            <!-- Historial reciente -->
+            <div class="panel panel--historial">
+                <p class="panel-title">Últimos avances registrados</p>
+
+                <div v-if="historial.length === 0" class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;color:var(--color-gris-300)">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p>Aún no hay avances registrados.</p>
+                </div>
+
+                <div v-for="h in historial" :key="h.id" class="hist-item">
+                    <div class="hist-header">
+                        <span class="hist-prior">Prioridad {{ h.numero_prioridad }}</span>
+                        <span class="hist-fecha">{{ h.fecha_registro }}</span>
+                    </div>
+                    <p v-if="h.avance_cualitativo" class="hist-desc">{{ truncar(h.avance_cualitativo, 100) }}</p>
+                    <div class="hist-cuant">
+                        <span class="hist-cuant-label">Avance registrado:</span>
+                        <span class="hist-cuant-val">{{ h.avance_cuantitativo }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+        </OrganismoLayout>
 </template>
 
 <style scoped>
-.dash { max-width: 1100px; }
+.dashboard { max-width: 1200px; padding: 0; }
+.dash-header { display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem; }
+.dash-breadcrumb { font-size:var(--text-xs);color:var(--color-gris-400);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.2rem; }
+.dash-title { font-family:var(--font-display);font-size:var(--text-2xl);color:var(--color-gris-800); }
 
-.dash-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
-.dash-saludo { font-size: var(--text-sm); color: var(--color-gris-500); margin-bottom: 0.2rem; }
-.dash-title { font-family: var(--font-display); font-size: var(--text-2xl); color: var(--color-gris-800); }
+/* Métricas */
+.metrics-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem; }
+.metric-card { background:var(--color-blanco);border:1px solid var(--color-gris-200);border-radius:var(--radius-lg);padding:1rem 1.25rem;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-sm); }
+.metric-card--verde  { border-left:3px solid var(--color-verde); }
+.metric-card--alerta { border-left:3px solid var(--color-vino); }
+.metric-card--azul   { border-left:3px solid #1a73e8; }
+.metric-label { font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--color-gris-400); }
+.metric-val   { font-size:28px;font-weight:700;font-family:var(--font-display);color:var(--color-gris-800); }
 
-.dash-avance-bar-wrap { background: var(--color-blanco); border-radius: var(--radius-lg); padding: 1.1rem 1.35rem; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm); border: 1px solid var(--color-gris-200); }
-.dash-avance-bar-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
-.dash-avance-bar-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-gris-500); }
-.dash-avance-bar-pct { font-family: var(--font-display); font-size: var(--text-md); font-weight: 700; color: var(--color-verde); }
-.dash-avance-bar-track { height: 8px; background: var(--color-gris-200); border-radius: var(--radius-full); overflow: hidden; }
-.dash-avance-bar-fill { height: 100%; background: linear-gradient(90deg, var(--color-verde) 0%, #4ecdc4 100%); border-radius: var(--radius-full); transition: width 0.8s ease; }
+/* Grid principal */
+.main-grid { display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start; }
 
-.dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+/* Panels */
+.panel { background:var(--color-blanco);border:1px solid var(--color-gris-200);border-radius:var(--radius-lg);padding:1.25rem;box-shadow:var(--shadow-sm); }
+.panel-title { font-size:var(--text-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-gris-500);margin-bottom:1rem; }
 
-.stat-card { background: var(--color-blanco); border-radius: var(--radius-lg); padding: 1.25rem; box-shadow: var(--shadow-sm); border: 1px solid var(--color-gris-200); border-top: 3px solid transparent; transition: box-shadow var(--transition-base), transform var(--transition-base); display: flex; flex-direction: column; gap: 0.5rem; }
-.stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-.stat-card--verde   { border-top-color: var(--color-verde); }
-.stat-card--vino    { border-top-color: var(--color-vino); }
-.stat-card--magenta { border-top-color: var(--color-magenta); }
-.stat-card--arena   { border-top-color: var(--color-arena-dk); }
+/* Línea card */
+.linea-card { border:1px solid var(--color-gris-200);border-radius:var(--radius-md);padding:1rem;margin-bottom:.75rem;transition:border-color var(--transition-base); }
+.linea-card:hover { border-color:var(--color-gris-400); }
+.linea-card:last-child { margin-bottom:0; }
+.linea-badges { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.5rem; }
+.badge-eje  { display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--radius-sm);font-size:11px;font-weight:700;background:var(--color-vino-lt);color:var(--color-vino); }
+.badge-pri  { display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--radius-sm);font-size:11px;font-weight:700;background:var(--color-magenta-lt);color:var(--color-magenta); }
+.badge-frec { display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;background:var(--color-gris-100);color:var(--color-gris-600); }
+.linea-desc { font-size:var(--text-sm);font-weight:600;color:var(--color-gris-800);line-height:1.5;margin-bottom:.5rem; }
+.linea-indicador { font-size:12px;color:var(--color-gris-500);margin-bottom:.75rem;line-height:1.4; }
+.linea-indicador-label { font-weight:700;color:var(--color-gris-600); }
 
-.stat-card-top { display: flex; align-items: center; justify-content: space-between; }
-.stat-ico { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; }
-.stat-ico svg { width: 20px; height: 20px; }
-.stat-ico--verde   { background: var(--color-verde-lt);   color: var(--color-verde); }
-.stat-ico--vino    { background: var(--color-vino-lt);    color: var(--color-vino); }
-.stat-ico--magenta { background: var(--color-magenta-lt); color: var(--color-magenta); }
-.stat-ico--arena   { background: var(--color-gris-200);   color: var(--color-gris-600); }
-.stat-valor { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; color: var(--color-gris-800); }
-.stat-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-gris-500); }
+/* Avance */
+.avance-section { margin-bottom:.75rem; }
+.avance-info { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px; }
+.avance-label { font-size:11px;font-weight:600;color:var(--color-gris-400);text-transform:uppercase;letter-spacing:.05em; }
+.avance-pct { font-size:var(--text-sm);font-weight:700;font-family:var(--font-display); }
+.avance-pct--verde    { color:var(--color-verde); }
+.avance-pct--amarillo { color:#d97706; }
+.avance-pct--rojo     { color:var(--color-vino); }
+.avance-track { width:100%;height:6px;background:var(--color-gris-200);border-radius:var(--radius-full);overflow:hidden; }
+.avance-fill { height:100%;border-radius:var(--radius-full);transition:width .4s ease; }
+.avance-fill--verde    { background:var(--color-verde); }
+.avance-fill--amarillo { background:#d97706; }
+.avance-fill--rojo     { background:var(--color-vino); }
+.avance-meta { font-size:11px;color:var(--color-gris-400);margin-top:3px; }
 
-.dash-body { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+/* Botón linea */
+.btn-linea { display:inline-flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:600;color:#1a73e8;text-decoration:none;transition:color var(--transition-base); }
+.btn-linea:hover { color:#0d5bba; }
 
-.dash-panel { background: var(--color-blanco); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); border: 1px solid var(--color-gris-200); }
-.dash-panel-title { font-family: var(--font-display); font-size: var(--text-md); color: var(--color-gris-800); margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--color-gris-200); }
+/* Historial */
+.hist-item { padding:.875rem 0;border-bottom:1px solid var(--color-gris-200); }
+.hist-item:last-child { border-bottom:none;padding-bottom:0; }
+.hist-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:4px; }
+.hist-prior { font-size:12px;font-weight:700;color:var(--color-gris-700); }
+.hist-fecha { font-size:11px;color:var(--color-gris-400); }
+.hist-desc  { font-size:var(--text-sm);color:var(--color-gris-600);line-height:1.5;margin-bottom:4px; }
+.hist-cuant { display:flex;gap:6px;align-items:center;font-size:12px; }
+.hist-cuant-label { color:var(--color-gris-400); }
+.hist-cuant-val   { font-weight:700;color:var(--color-gris-700); }
 
-.quick-list { display: flex; flex-direction: column; gap: 0.5rem; }
-.quick-item { display: flex; align-items: center; gap: 1rem; padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--color-gris-200); cursor: pointer; transition: background var(--transition-base), border-color var(--transition-base), transform var(--transition-base); }
-.quick-item:hover { background: var(--color-gris-100); border-color: var(--color-gris-300); transform: translateX(3px); }
-.quick-ico { width: 38px; height: 38px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.quick-ico svg { width: 18px; height: 18px; }
-.quick-ico--verde   { background: var(--color-verde-lt);   color: var(--color-verde); }
-.quick-ico--vino    { background: var(--color-vino-lt);    color: var(--color-vino); }
-.quick-ico--magenta { background: var(--color-magenta-lt); color: var(--color-magenta); }
-.quick-ico--arena   { background: var(--color-gris-200);   color: var(--color-gris-600); }
-.quick-label { font-size: var(--text-sm); font-weight: 600; color: var(--color-gris-700); margin-bottom: 0.1rem; }
-.quick-sub   { font-size: var(--text-xs); color: var(--color-gris-500); }
-.quick-arrow { width: 16px; height: 16px; color: var(--color-gris-400); margin-left: auto; flex-shrink: 0; }
-
-.dash-empty { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 2rem 1rem; text-align: center; color: var(--color-gris-500); font-size: var(--text-sm); }
-.dash-empty-sub { font-size: var(--text-xs); color: var(--color-gris-400); }
-
-.avance-list { display: flex; flex-direction: column; }
-.avance-item { display: flex; align-items: center; gap: 0.85rem; padding: 0.75rem 0; border-bottom: 1px solid var(--color-gris-200); }
-.avance-item:last-child { border-bottom: none; }
-.avance-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-verde); flex-shrink: 0; }
-.avance-info { flex: 1; overflow: hidden; }
-.avance-linea { font-size: var(--text-sm); font-weight: 600; color: var(--color-gris-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.avance-fecha { font-size: var(--text-xs); color: var(--color-gris-500); }
-.avance-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; flex-shrink: 0; }
-.avance-pct { font-family: var(--font-display); font-size: var(--text-sm); font-weight: 700; color: var(--color-verde); }
-.avance-mini-bar { width: 60px; height: 4px; background: var(--color-gris-200); border-radius: var(--radius-full); overflow: hidden; }
-.avance-mini-fill { height: 100%; background: var(--color-verde); border-radius: var(--radius-full); }
-
-@media (max-width: 900px) {
-    .dash-body { grid-template-columns: 1fr; }
-}
+/* Empty */
+.empty-state { display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:2rem;text-align:center;color:var(--color-gris-500);font-size:var(--text-sm); }
 </style>

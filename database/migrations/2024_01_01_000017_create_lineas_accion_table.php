@@ -18,10 +18,19 @@ return new class extends Migration
             $table->unsignedBigInteger('id_estrategia')->nullable();
             $table->unsignedBigInteger('id_plazo')->nullable();
             $table->unsignedBigInteger('id_frecuencia')->nullable();
+            $table->unsignedBigInteger('id_estatus')->nullable();          // ★ NUEVO
 
             // ── Responsabilidad institucional ─────────────────────────────────
-            // id_organismo se omite: se obtiene via usuario->organismo
             $table->unsignedBigInteger('id_usuario');
+
+            // ── Características del indicador ─────────────────────────────────
+            $table->string('nombre_indicador')->nullable();                // ★ NUEVO
+            $table->text('formula')->nullable();                           // ★ NUEVO
+            $table->decimal('linea_base', 15, 4)->nullable();              // ★ NUEVO
+            $table->enum('sentido_indicador', [                            // ★ SUGERIDO
+                'Ascendente',
+                'Descendente',
+            ])->nullable();
 
             // ── Medición ──────────────────────────────────────────────────────
             $table->decimal('meta', 15, 4)->nullable();
@@ -52,6 +61,9 @@ return new class extends Migration
                 ->nullOnDelete();
             $table->foreign('id_frecuencia')
                 ->references('id')->on('cat_lineas_accion_frec_medicion')
+                ->nullOnDelete();
+            $table->foreign('id_estatus')                                  // ★ NUEVO
+            ->references('id')->on('cat_lineas_accion_estatus')
                 ->nullOnDelete();
 
             // ── Claves foráneas — responsabilidad ─────────────────────────────

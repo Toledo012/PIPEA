@@ -84,6 +84,10 @@ class OrganismoSeeder extends Seeder
                 'nombre' => 'Congreso del Estado de Chiapas',
                 'siglas' => 'CONGRESO',
             ],
+
+
+
+
         ];
 
         foreach ($organismos as $org) {
