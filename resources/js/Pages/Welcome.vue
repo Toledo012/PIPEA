@@ -1,542 +1,893 @@
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 
 defineProps({
     canLogin: Boolean,
 })
+
+const INTERVAL = 5000
+const carouselIndex = ref(0)
+const progressBar = ref(null)
+let timer = null
+
+const dependencias = [
+    {
+        nombre: 'Consejo de Participación Ciudadana',
+        img: '/images/dependencias/CPC.png',
+        desc: 'Órgano ciudadano encargado de ser el canal de comunicación entre la sociedad y las autoridades dentro del Sistema Anticorrupción del Estado de Chiapas (SAECH). Su función principal es vigilar, proponer políticas públicas y dar seguimiento a las acciones de combate a la corrupción en la entidad. ',
+    },
+    {
+        nombre: 'Secretaría Anticorrupción y Buen Gobierno',
+        img: '/images/dependencias/Buen_Gobierno.jpg',
+        desc: 'dependencia del Poder Ejecutivo de Chiapas encargada de la fiscalización, transparencia y combate a la corrupción en la administración pública estatal.',
+    },
+    {
+        nombre: 'Fiscalia General del Estado de Chiapas',
+        img: '/images/dependencias/Fiscalia_general.jpg',
+        desc: 'Órgano constitucional autónomo encargado de la procuración de justicia, la investigación de delitos y el ejercicio de la acción penal en el estado.',
+    },
+    {
+        nombre: 'Auditoría Superior del Estado de Chiapas',
+        img: '/images/dependencias/ASE.jpeg',
+        desc: 'Órgano técnico encargado de revisar y fiscalizar el uso de los recursos públicos en el estado y sus municipios. Es una institución con autonomía técnica y de gestión que depende del Honorable Congreso del Estado.',
+    },
+    {
+        nombre: 'Tribunal de Justicia Administrativa del Estado de Chiapas',
+        img: '/images/dependencias/LOGO_TJA.png',
+        desc: 'Órgano autónomo encargado de resolver las controversias entre la administración pública (estatal o municipal) y los particulares, además de sancionar responsabilidades administrativas graves.',
+    },
+    {
+        nombre: 'Poder Judicial del Estado de Chiapas',
+        img: '/images/dependencias/PJE.jpg',
+        desc: 'Institución pública responsable de administrar e impartir justicia en el estado de Chiapas. Su función principal es resolver conflictos entre ciudadanos o entre estos y el gobierno, asegurando que se respeten las leyes y los derechos humanos..',
+    },
+]
+
+function resetProgress() {
+    if (!progressBar.value) return
+    progressBar.value.style.transition = 'none'
+    progressBar.value.style.width = '0%'
+    requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+            progressBar.value.style.transition = `width ${INTERVAL}ms linear`
+            progressBar.value.style.width = '100%'
+        }),
+    )
+}
+
+function goTo(index) {
+    carouselIndex.value = ((index % dependencias.length) + dependencias.length) % dependencias.length
+    resetProgress()
+    clearInterval(timer)
+    timer = setInterval(() => goTo(carouselIndex.value + 1), INTERVAL)
+}
+
+onMounted(() => {
+    resetProgress()
+    timer = setInterval(() => goTo(carouselIndex.value + 1), INTERVAL)
+})
+
+onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
     <Head title="PIPEA — Secretaría Anticorrupción y Buen Gobierno · Chiapas" />
 
     <div class="public-root">
-
-        <!-- ══ BANNER INSTITUCIONAL ══════════════════════════════ -->
+        <!-- BANNER INSTITUCIONAL -->
         <div class="public-banner">
             <div class="public-banner-inner">
                 <img src="/images/banner-sesaech.png" alt="SESAECH" class="banner-img" />
-              </div>
+            </div>
         </div>
 
-        <!-- ══ HEADER NAV ════════════════════════════════════════ -->
-        <header class="public-header">
-            <div class="public-header-inner">
-                <span class="public-header-brand">SISTEMA PI-PEA</span>
+        <main class="landing-wrap">
+            <!-- CABECERA SUPERIOR -->
 
-                <nav class="public-nav">
-                    <a href="#inicio"     class="public-nav-link">Inicio</a>
-                    <a href="#que-es"     class="public-nav-link">¿Qué es?</a>
-                    <a href="#objetivos"  class="public-nav-link">Objetivos</a>
-                    <a href="#organismos" class="public-nav-link">Organismos</a>
-                </nav>
+            <!-- FRANJA PRINCIPAL -->
 
-                <Link
-                    v-if="canLogin"
-                    :href="route('login')"
-                    class="btn btn-primary btn-sm"
-                >
-                    Acceder al sistema
-                </Link>
-            </div>
-        </header>
+            <!-- ¿QUÉ ES? -->
+            <section id="que-es" class="intro-block">
+                <h3 class="section-main-title">
+                    ¿Qué es el Programa de Implementación de la
+                    <br />
+                    Política Estatal Anticorrupción (PI PEA)?
+                </h3>
 
-        <!-- ══ HERO ══════════════════════════════════════════════ -->
-        <section id="inicio" class="public-hero">
-            <div class="public-hero-inner">
+                <div class="info-grid">
+                    <article class="info-box info-box--light" tabindex="0">
+                        <div class="info-box-accent"></div>
+                        <h4 class="info-box-title">Política Estatal Anticorrupción</h4>
+                        <p class="info-box-text">
+                            El programa de implementación de la PEA establece las líneas de acción
+                            que deben seguir las dependencias del gobierno de Chiapas para combatir
+                            la corrupción de manera sistemática.
+                        </p>
+                    </article>
 
-                <div class="public-hero-logo">
-                    <img src="/images/Logotipo%20nuevo.png" alt="SESAECH" class="public-hero-logo-img" />
+                    <article class="info-box info-box--light" tabindex="0">
+                        <div class="info-box-accent"></div>
+                        <h4 class="info-box-title">Organismos implementadores</h4>
+                        <p class="info-box-text">
+                            Las secretarías o entidades del gobierno estatal son responsables de
+                            ejecutar y reportar el avance de las líneas asignadas conforme al
+                            programa.
+                        </p>
+                    </article>
+
+                    <article class="info-box info-box--light" tabindex="0">
+                        <div class="info-box-accent"></div>
+                        <h4 class="info-box-title">Monitoreo y Seguimiento</h4>
+                        <p class="info-box-text">
+                            La SESAECH supervisa el cumplimiento del programa a través de esta
+                            plataforma, registrando avances, evidencias y experiencia institucional.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <!-- EJES -->
+            <section id="objetivos" class="ejes-block">
+                <div class="ejes-watermark" aria-hidden="true"></div>
+
+                <div class="ejes-head">
+                    <h3 class="ejes-title">Ejes de la PI PEA</h3>
+                    <p class="ejes-subtitle">
+                        Generar las condiciones necesarias para un control efectivo de la corrupción
+                        en Chiapas
+                    </p>
                 </div>
 
-                <div class="public-hero-content">
-                    <p class="public-hero-pre">GOBIERNO DE CHIAPAS · 2024–2030</p>
-                    <h1 class="public-hero-title">
-                        Sistema de Monitoreo<br />y Seguimiento
-                        <span class="public-hero-accent">PI-PEA</span>
-                    </h1>
-                    <p class="public-hero-desc">
-                        Plataforma institucional de la Secretaría Anticorrupción y Buen Gobierno
-                        para la supervisión, evaluación y seguimiento de la Política Estatal
-                        Anticorrupción de Chiapas.
+                <div class="ejes-grid">
+                    <article class="eje-card" tabindex="0">
+                        <div class="eje-icon">💵</div>
+                        <div>
+                            <span class="eje-num">Eje 1</span>
+                            <p class="eje-text">Combatir la corrupción y la impunidad</p>
+                        </div>
+                    </article>
+
+                    <article class="eje-card" tabindex="0">
+                        <div class="eje-icon">⚖️</div>
+                        <div>
+                            <span class="eje-num">Eje 2</span>
+                            <p class="eje-text">Combatir la arbitrariedad y el abuso de poder</p>
+                        </div>
+                    </article>
+
+                    <article class="eje-card" tabindex="0">
+                        <div class="eje-icon">👁️</div>
+                        <div>
+                            <span class="eje-num">Eje 3</span>
+                            <p class="eje-text">
+                                Promover la mejora de la gestión pública y de los puntos de contacto
+                                gobierno-sociedad
+                            </p>
+                        </div>
+                    </article>
+
+                    <article class="eje-card" tabindex="0">
+                        <div class="eje-icon">🤝</div>
+                        <div>
+                            <span class="eje-num">Eje 4</span>
+                            <p class="eje-text">Involucrar a la sociedad y el sector privado</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ACCESO -->
+            <section id="organismos" class="access-block">
+                <div class="access-card">
+                    <span class="access-badge">Acceso institucional</span>
+
+                    <h3 class="access-title">¿Eres servidor público autorizado?</h3>
+
+                    <p class="access-text">
+                        Ingresa al sistema para registrar, consultar y dar seguimiento al avance de
+                        tu organismo en el cumplimiento de la PI PEA.
                     </p>
 
-                    <div class="public-hero-actions">
+                    <div class="access-actions">
                         <Link
                             v-if="canLogin"
                             :href="route('login')"
-                            class="btn btn-primary btn-lg"
+                            class="access-btn"
                         >
-                            <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                            </svg>
                             Acceder al sistema
                         </Link>
-                        <a href="#que-es" class="btn btn-outline btn-lg">
-                            Conocer más
-                        </a>
                     </div>
                 </div>
+            </section>
 
-            </div>
-
-            <!-- Decoración fondo -->
-            <div class="public-hero-deco" aria-hidden="true"></div>
-        </section>
-
-        <!-- ══ ¿QUÉ ES? ══════════════════════════════════════════ -->
-        <section id="que-es" class="public-section public-section--light">
-            <div class="public-section-inner">
-                <div class="public-section-head">
-                    <span class="public-section-tag">Sobre el programa</span>
-                    <h2 class="public-section-title">¿Qué es el PI-PEA?</h2>
-                </div>
-
-                <div class="public-cards">
-                    <div class="public-card">
-                        <div class="public-card-ico public-card-ico--verde">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                            </svg>
-                        </div>
-                        <h3 class="public-card-title">Política Estatal Anticorrupción</h3>
-                        <p class="public-card-desc">
-                            El Programa de Implementación de la PEA establece las líneas de acción
-                            que deben seguir las dependencias del Gobierno de Chiapas para combatir
-                            la corrupción de manera sistemática.
-                        </p>
-                    </div>
-
-                    <div class="public-card">
-                        <div class="public-card-ico public-card-ico--vino">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                            </svg>
-                        </div>
-                        <h3 class="public-card-title">Organismos Implementadores</h3>
-                        <p class="public-card-desc">
-                            Las dependencias y entidades del gobierno estatal son responsables de
-                            ejecutar y reportar el avance de las líneas de acción asignadas
-                            conforme al programa.
-                        </p>
-                    </div>
-
-                    <div class="public-card">
-                        <div class="public-card-ico public-card-ico--magenta">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
-                        </div>
-                        <h3 class="public-card-title">Monitoreo y Seguimiento</h3>
-                        <p class="public-card-desc">
-                            La SESAECH supervisa el cumplimiento del programa a través de esta
-                            plataforma, registrando avances, evidencias y generando reportes
-                            de cumplimiento institucional.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ══ OBJETIVOS / EJES ══════════════════════════════════ -->
-        <section id="objetivos" class="public-section">
-            <div class="public-section-inner">
-                <div class="public-section-head">
-                    <span class="public-section-tag">Estructura del programa</span>
-                    <h2 class="public-section-title">4 Ejes estratégicos</h2>
-                    <p class="public-section-sub">
-                        El PI-PEA se articula en 4 ejes, 10 objetivos específicos y 67 prioridades
-                        que orientan la acción anticorrupción del Estado.
-                    </p>
-                </div>
-
-                <div class="public-ejes">
-                    <div class="public-eje">
-                        <span class="public-eje-num">01</span>
-                        <p class="public-eje-label">Prevención de la corrupción</p>
-                    </div>
-                    <div class="public-eje">
-                        <span class="public-eje-num">02</span>
-                        <p class="public-eje-label">Control interno y auditoría</p>
-                    </div>
-                    <div class="public-eje">
-                        <span class="public-eje-num">03</span>
-                        <p class="public-eje-label">Transparencia y rendición de cuentas</p>
-                    </div>
-                    <div class="public-eje">
-                        <span class="public-eje-num">04</span>
-                        <p class="public-eje-label">Participación ciudadana</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ══ CTA FINAL ════════════════════════════════════════ -->
-        <section id="organismos" class="public-cta">
-            <div class="public-cta-inner">
-                <h2 class="public-cta-title">¿Eres servidor público autorizado?</h2>
-                <p class="public-cta-desc">
-                    Accede al sistema para registrar y consultar el avance de tu organismo
-                    en el cumplimiento del PI-PEA.
-                </p>
-                <Link
-                    v-if="canLogin"
-                    :href="route('login')"
-                    class="btn btn-primary btn-lg"
+            <!-- ═══════════════════════════════════════
+                 CARRUSEL DE DEPENDENCIAS
+            ════════════════════════════════════════ -->
+            <section class="carousel-section">
+                <div
+                    v-for="(dep, i) in dependencias"
+                    :key="i"
+                    class="carousel-slide"
+                    :class="{ active: carouselIndex === i }"
                 >
-                    Acceder al sistema
-                </Link>
-            </div>
-        </section>
+                    <div
+                        class="carousel-bg"
+                        :style="{ backgroundImage: `url(${dep.img})` }"
+                    ></div>
+                    <div class="carousel-overlay"></div>
+                    <div class="carousel-content">
+                        <span class="carousel-dep-tag">Organismo implementador</span>
+                        <h3 class="carousel-title">{{ dep.nombre }}</h3>
+                        <p class="carousel-desc">{{ dep.desc }}</p>
+                    </div>
+                </div>
 
-        <!-- ══ FOOTER ═══════════════════════════════════════════ -->
-        <footer class="public-footer">
-            <div class="public-footer-inner">
-                <p>Secretaría Anticorrupción y Buen Gobierno · Gobierno de Chiapas · 2024–2030</p>
-                <p class="public-footer-sub">Sistema PI-PEA · Uso exclusivo para servidores públicos autorizados</p>
-            </div>
-        </footer>
+                <!-- Dots -->
+                <div class="carousel-dots">
+                    <button
+                        v-for="(_, i) in dependencias"
+                        :key="i"
+                        class="dot"
+                        :class="{ active: carouselIndex === i }"
+                        @click="goTo(i)"
+                    />
+                </div>
 
+                <!-- Flechas -->
+                <div class="carousel-controls">
+                    <button class="carousel-btn" @click="goTo(carouselIndex - 1)">&#8592;</button>
+                    <button class="carousel-btn" @click="goTo(carouselIndex + 1)">&#8594;</button>
+                </div>
+
+                <!-- Barra de progreso -->
+                <div class="carousel-progress" ref="progressBar"></div>
+            </section>
+
+        </main>
     </div>
 </template>
 
 <style scoped>
-/* Usa variables de app.css + estilos propios de la página pública */
-
 .public-root {
     min-height: 100vh;
-    background: var(--color-arena-lt);
-    font-family: var(--font-body);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(180deg, #f3f3f3 0%, #ececec 100%);
+    color: #24343a;
+    font-family: Arial, sans-serif;
+    overflow-x: hidden;
 }
 
-/* ── Banner ─────────────────────────────────────────────── */
-.banner {
-    height: var(--banner-h);
+.public-banner {
+    width: 100%;
+    margin: 0;
     padding: 0;
 }
-.banner-img {
-    height: 100%;
+
+.public-banner-inner {
     width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.banner-img {
+    width: 100%;
+    display: block;
     object-fit: cover;
-    object-position: center;
-    display: block;
 }
 
-/* ── Header nav ─────────────────────────────────────────── */
-.public-header {
-    background: #1a1210;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-}
-
-.public-header-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0.85rem 1.5rem;
-}
-
-.public-header-brand {
-    font-family: var(--font-display);
-    font-size: var(--text-sm);
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    color: var(--color-arena);
-}
-
-.public-nav {
-    display: flex;
-    gap: 2rem;
-}
-
-.public-nav-link {
-    font-size: var(--text-sm);
-    color: rgba(255,255,255,0.6);
-    text-decoration: none;
-    transition: color var(--transition-base);
-    letter-spacing: 0.04em;
-}
-
-.public-nav-link:hover { color: var(--color-verde); }
-
-/* ── Hero ───────────────────────────────────────────────── */
-.public-hero {
-    position: relative;
-    background: var(--color-blanco);
-    overflow: hidden;
-    padding: 5rem 1.5rem;
-}
-
-.public-hero-inner {
-    display: grid;
-    grid-template-columns: 1fr 1.4fr;
-    gap: 4rem;
-    align-items: center;
-    max-width: 1100px;
-    margin: 0 auto;
-    position: relative;
-    z-index: 1;
-}
-
-.public-hero-logo {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.public-hero-logo-img {
-    width: 320px;
+/* CONTENEDOR GENERAL */
+.landing-wrap {
+    width: 100%;
     max-width: 100%;
-    height: auto;
-    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.1));
+    margin: 0;
+    background: #ffffff;
+    box-shadow: none;
+    overflow: hidden;
 }
 
-.public-hero-pre {
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: var(--color-verde);
-    text-transform: uppercase;
-    margin-bottom: 1rem;
+/* CABECERA */
+.top-brand {
+    width: 100%;
+    background: #f5f5f5;
+    padding: 1rem 2rem;
+    border-bottom: 2px solid #c20f62;
 }
 
-.public-hero-title {
-    font-family: var(--font-display);
-    font-size: 2.4rem;
-    line-height: 1.15;
-    color: var(--color-gris-800);
-    margin-bottom: 1.25rem;
-    text-transform: uppercase;
-}
-
-.public-hero-accent {
-    display: block;
-    color: var(--color-vino);
-}
-
-.public-hero-desc {
-    font-size: var(--text-md);
-    line-height: 1.75;
-    color: var(--color-gris-600);
-    margin-bottom: 2rem;
-    max-width: 480px;
-}
-
-.public-hero-actions {
-    display: flex;
+.top-brand-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 140px 1fr 140px;
+    align-items: center;
     gap: 1rem;
-    flex-wrap: wrap;
 }
 
-/* Decoración hero */
-.public-hero-deco {
+.top-brand-spacer {
+    width: 100%;
+    height: 1px;
+}
+
+.top-brand-center {
+    text-align: center;
+    min-width: 0;
+}
+
+.top-brand-title {
+    margin: 0;
+    font-size: clamp(1.7rem, 3.4vw, 4rem);
+    line-height: 1.08;
+    font-weight: 800;
+    color: #2e6d73;
+    word-break: break-word;
+}
+
+.top-brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-right-box {
+    text-align: center;
+    color: #7a5d95;
+}
+
+.brand-right-text {
+    display: block;
+    font-size: clamp(1.4rem, 2vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
+.brand-right-sub {
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    opacity: 0.95;
+}
+
+/* FRANJA PRINCIPAL */
+.hero-strip {
+    width: 100%;
+    background: linear-gradient(135deg, #b40d5d 0%, #c00f63 100%);
+    padding: 1.2rem 1rem;
+    text-align: center;
+}
+
+.hero-strip-title {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(1.5rem, 3vw, 2.8rem);
+    line-height: 1.18;
+    font-weight: 800;
+}
+
+/* INTRO */
+.intro-block {
+    width: 100%;
+    padding: 2.2rem 2rem 2rem;
+    background: #f7f7f7;
+}
+
+.section-main-title {
+    margin: 0 0 1.8rem;
+    text-align: center;
+    font-size: clamp(1.4rem, 2.7vw, 2.6rem);
+    line-height: 1.25;
+    font-weight: 800;
+    color: #3e6f78;
+}
+
+.info-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.info-box {
+    position: relative;
+    min-height: 210px;
+    padding: 1.2rem 1.1rem 1.1rem 1.2rem;
+    border-radius: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    outline: none;
+    background: #f6eff2;
+    border: 1px solid #e6c9d2;
+    box-shadow:
+        0 8px 22px rgba(0, 0, 0, 0.06),
+        inset 0 0 0 1px rgba(177, 15, 87, 0.06);
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease;
+}
+
+.info-box-accent {
     position: absolute;
-    top: -80px;
-    right: -80px;
-    width: 400px;
-    height: 400px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(0,152,135,0.06) 0%, transparent 70%);
+    inset: 0 auto 0 0;
+    width: 6px;
+    background: linear-gradient(180deg, #c3122f 0%, #b10f57 100%);
+    opacity: 0.95;
+}
+
+.info-box:hover,
+.info-box:focus {
+    transform: translateY(-6px);
+    background: #fbf5f7;
+    border-color: #d6899f;
+    box-shadow:
+        0 18px 38px rgba(159, 13, 61, 0.14),
+        0 0 0 3px rgba(181, 15, 87, 0.08);
+}
+
+.info-box-title {
+    position: relative;
+    margin: 0 0 0.8rem;
+    font-size: 1.1rem;
+    line-height: 1.2;
+    font-weight: 800;
+    color: #1d1d1d;
+}
+
+.info-box-text {
+    position: relative;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #4a4a4a;
+}
+
+/* EJES */
+.ejes-block {
+    position: relative;
+    width: 100%;
+    padding: 2.4rem 2rem;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.ejes-watermark {
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(45deg, transparent 46%, rgba(0, 152, 135, 0.07) 46%, rgba(0, 152, 135, 0.07) 54%, transparent 54%),
+        linear-gradient(-45deg, transparent 46%, rgba(177, 15, 87, 0.07) 46%, rgba(177, 15, 87, 0.07) 54%, transparent 54%);
+    background-size: 260px 260px;
+    background-position: center;
     pointer-events: none;
 }
 
-/* ── Secciones ──────────────────────────────────────────── */
-.public-section {
-    padding: 5rem 1.5rem;
-}
-
-.public-section--light {
-    background: var(--color-arena-lt);
-}
-
-.public-section-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-}
-
-.public-section-head {
+.ejes-head {
+    position: relative;
+    z-index: 1;
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 1.4rem;
 }
 
-.public-section-tag {
-    display: inline-block;
-    font-size: var(--text-xs);
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--color-verde);
-    margin-bottom: 0.75rem;
+.ejes-title {
+    margin: 0;
+    font-size: clamp(1.5rem, 2.7vw, 2.5rem);
+    font-weight: 800;
+    color: #b10f57;
 }
 
-.public-section-title {
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    color: var(--color-gris-800);
-    margin-bottom: 0.75rem;
+.ejes-subtitle {
+    max-width: 780px;
+    margin: 0.5rem auto 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: #566268;
 }
 
-.public-section-sub {
-    font-size: var(--text-md);
-    color: var(--color-gris-500);
-    max-width: 560px;
-    margin: 0 auto;
-    line-height: 1.7;
-}
-
-/* Cards */
-.public-cards {
+.ejes-grid {
+    position: relative;
+    z-index: 1;
+    width: 100%;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
 }
 
-.public-card {
-    background: var(--color-blanco);
-    border-radius: var(--radius-xl);
-    padding: 1.75rem;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--color-gris-200);
-    transition: box-shadow var(--transition-base), transform var(--transition-base);
+.eje-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 112px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #e5d5da;
+    border-radius: 18px;
+    padding: 1rem 1rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        border-color 0.25s ease,
+        background 0.25s ease;
+    cursor: pointer;
+    outline: none;
 }
 
-.public-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-3px);
+.eje-card:hover,
+.eje-card:focus {
+    transform: translateY(-5px);
+    border-color: #d78aa0;
+    background: linear-gradient(180deg, #ffffff 0%, #fff6f8 100%);
+    box-shadow:
+        0 18px 34px rgba(177, 15, 87, 0.12),
+        0 0 0 3px rgba(177, 15, 87, 0.08);
 }
 
-.public-card-ico {
-    width: 52px; height: 52px;
-    border-radius: var(--radius-lg);
+.eje-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 1.25rem;
+    background: linear-gradient(135deg, #f9eef2 0%, #f1f5f6 100%);
+    font-size: 1.7rem;
+    box-shadow: inset 0 0 0 1px rgba(177, 15, 87, 0.08);
 }
 
-.public-card-ico svg { width: 26px; height: 26px; }
-.public-card-ico--verde   { background: var(--color-verde-lt);   color: var(--color-verde); }
-.public-card-ico--vino    { background: var(--color-vino-lt);    color: var(--color-vino); }
-.public-card-ico--magenta { background: var(--color-magenta-lt); color: var(--color-magenta); }
-
-.public-card-title {
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    color: var(--color-gris-800);
-    margin-bottom: 0.75rem;
+.eje-num {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #6a7f84;
 }
 
-.public-card-desc {
-    font-size: var(--text-sm);
-    color: var(--color-gris-500);
-    line-height: 1.75;
-}
-
-/* Ejes */
-.public-ejes {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.25rem;
-}
-
-.public-eje {
-    background: var(--color-blanco);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    border-left: 4px solid var(--color-verde);
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.public-eje-num {
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
+.eje-text {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.45;
     font-weight: 700;
-    color: var(--color-verde);
-    line-height: 1;
+    color: #33474e;
 }
 
-.public-eje-label {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-gris-700);
-    line-height: 1.4;
+/* ACCESO */
+.access-block {
+    width: 100%;
+    padding: 2rem;
+    background:
+        radial-gradient(circle at top left, rgba(177, 15, 87, 0.08), transparent 32%),
+        radial-gradient(circle at top right, rgba(0, 152, 135, 0.08), transparent 32%),
+        linear-gradient(180deg, #f6f8fb 0%, #edf3f8 100%);
 }
 
-/* CTA */
-.public-cta {
-    background: linear-gradient(135deg, #003d35 0%, #005a4e 50%, #007a6d 100%);
-    padding: 5rem 1.5rem;
+.access-card {
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    background: linear-gradient(135deg, #143d6d 0%, #0c2d52 100%);
+    border-radius: 24px;
+    box-shadow: 0 18px 44px rgba(10, 33, 59, 0.25);
     text-align: center;
+    color: #ffffff;
     position: relative;
     overflow: hidden;
 }
 
-.public-cta::before {
-    content: '';
+.access-card::before {
+    content: "";
     position: absolute;
     inset: 0;
-    background-image:
-        repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 0, transparent 50%),
-        repeating-linear-gradient(-45deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 0, transparent 50%);
-    background-size: 20px 20px;
+    background:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
 }
 
-.public-cta-inner {
+.access-badge,
+.access-title,
+.access-text,
+.access-actions {
     position: relative;
     z-index: 1;
+}
+
+.access-badge {
+    display: inline-block;
+    margin-bottom: 0.85rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.access-title {
+    margin: 0 0 0.7rem;
+    font-size: clamp(1.4rem, 2.2vw, 2rem);
+    font-weight: 800;
+    line-height: 1.2;
+    color: #ffffff;
+}
+
+.access-text {
+    margin: 0 auto 1.3rem;
     max-width: 600px;
-    margin: 0 auto;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: rgba(255, 255, 255, 0.93);
+}
+
+.access-actions {
     display: flex;
-    flex-direction: column;
+    justify-content: center;
+}
+
+.access-btn {
+    display: inline-flex;
     align-items: center;
-    gap: 1rem;
+    justify-content: center;
+    padding: 0.95rem 1.6rem;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #ffffff;
+    background: linear-gradient(135deg, #b10f57 0%, #d2196d 100%);
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
+    box-shadow: 0 10px 24px rgba(177, 15, 87, 0.35);
 }
 
-.public-cta-title {
-    font-family: var(--font-display);
-    font-size: var(--text-2xl);
-    color: var(--color-blanco);
+.access-btn:hover,
+.access-btn:focus {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+    box-shadow: 0 16px 30px rgba(177, 15, 87, 0.42);
 }
 
-.public-cta-desc {
-    font-size: var(--text-md);
-    color: rgba(255,255,255,0.65);
-    line-height: 1.7;
-    margin-bottom: 0.5rem;
+/* ═══════════════════════════════════════
+   CARRUSEL DE DEPENDENCIAS
+════════════════════════════════════════ */
+.carousel-section {
+    position: relative;
+    width: 100%;
+    height: 420px;
+    overflow: hidden;
+    background: #0c1a2e;
 }
 
-/* Footer */
-.public-footer {
-    background: #1a1210;
-    padding: 1.75rem 1.5rem;
-    text-align: center;
+.carousel-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
 }
 
-.public-footer-inner {
-    font-size: var(--text-xs);
-    color: rgba(255,255,255,0.35);
+.carousel-slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.carousel-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.04);
+    transition: transform 6s ease;
+}
+
+.carousel-slide.active .carousel-bg {
+    transform: scale(1);
+}
+
+.carousel-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(8, 20, 40, 0.88) 0%,
+        rgba(8, 20, 40, 0.60) 45%,
+        rgba(8, 20, 40, 0.18) 100%
+    );
+}
+
+.carousel-content {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    justify-content: center;
+    padding: 0 5% 0 6%;
+    max-width: 580px;
 }
 
-.public-footer-sub { color: rgba(255,255,255,0.2); }
+.carousel-dep-tag {
+    display: inline-block;
+    background: rgba(177, 15, 87, 0.85);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+    width: fit-content;
+}
 
-/* ── Responsive ──────────────────────────────────────────── */
-@media (max-width: 768px) {
-    .public-hero-inner { grid-template-columns: 1fr; text-align: center; gap: 2rem; }
-    .public-hero-logo { order: -1; }
-    .public-hero-logo-img { width: 200px; }
-    .public-hero-desc { margin: 0 auto 2rem; }
-    .public-hero-actions { justify-content: center; }
-    .public-hero-title { font-size: 1.75rem; }
-    .public-nav { display: none; }
-    .public-banner-title { font-size: 0.7rem; }
+.carousel-title {
+    font-size: clamp(1.3rem, 2.4vw, 1.9rem);
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.25;
+    margin: 0 0 12px;
+    font-family: Arial, sans-serif;
+}
+
+.carousel-desc {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.82);
+    line-height: 1.65;
+    margin: 0;
+    max-width: 440px;
+    font-family: Arial, sans-serif;
+}
+
+.carousel-dots {
+    position: absolute;
+    bottom: 28px;
+    left: 6%;
+    display: flex;
+    gap: 7px;
+    z-index: 10;
+}
+
+.dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.3s, transform 0.2s;
+}
+
+.dot.active {
+    background: #ffffff;
+    transform: scale(1.35);
+}
+
+.carousel-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 32px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10;
+}
+
+.carousel-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.10);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.carousel-btn:hover {
+    background: rgba(177, 15, 87, 0.75);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: scale(1.08);
+}
+
+.carousel-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: rgba(177, 15, 87, 0.9);
+    width: 0%;
+    z-index: 10;
+}
+
+/* RESPONSIVE */
+@media (max-width: 980px) {
+    .top-brand {
+        padding: 1rem;
+    }
+
+    .top-brand-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .top-brand-spacer {
+        display: none;
+    }
+
+    .top-brand-logo--right {
+        justify-content: center;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ejes-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .hero-strip {
+        padding: 0.9rem 0.8rem;
+    }
+
+    .intro-block,
+    .ejes-block,
+    .access-block {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .section-main-title br,
+    .top-brand-title br,
+    .hero-strip-title br {
+        display: none;
+    }
+
+    .info-box {
+        min-height: auto;
+    }
+
+    .eje-card {
+        align-items: flex-start;
+        min-height: auto;
+    }
+
+    .access-card {
+        padding: 1.5rem 1rem;
+        border-radius: 18px;
+    }
+
+    .access-btn {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .carousel-section {
+        height: 360px;
+    }
+
+    .carousel-title {
+        font-size: 1.1rem;
+    }
+
+    .carousel-desc {
+        font-size: 0.85rem;
+    }
+
+    .carousel-content {
+        padding: 0 4% 0 4%;
+        max-width: 100%;
+    }
 }
 </style>

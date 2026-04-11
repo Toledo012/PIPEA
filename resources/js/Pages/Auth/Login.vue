@@ -173,15 +173,14 @@ const { form, showPassword, togglePassword, submit } = useLogin()
 </template>
 
 <style scoped>
-/* Solo CSS específico del login que no está en app.css */
-
+/* ── ROOT ───────────────────────────────────────────── */
 .login-root {
     display: flex;
     min-height: 100vh;
-    background: var(--color-arena-lt);
+    background: #f5f5f5;
 }
 
-/* ── Panel izquierdo ─────────────────────────────────────── */
+/* ── PANEL IZQUIERDO ───────────────────────────────── */
 .login-panel-left {
     position: relative;
     width: 45%;
@@ -196,7 +195,7 @@ const { form, showPassword, togglePassword, submit } = useLogin()
 .login-panel-bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(150deg, #003d35 0%, #005a4e 40%, #007a6d 100%);
+    background: linear-gradient(150deg, #000000 0%, #1a1a1a 40%, #2b2b2b 100%);
     z-index: 0;
 }
 
@@ -211,13 +210,13 @@ const { form, showPassword, togglePassword, submit } = useLogin()
     background-size: 20px 20px;
 }
 
-/* Línea magenta derecha */
+/* Línea magenta */
 .login-panel-left::after {
     content: '';
     position: absolute;
     right: 0; top: 0; bottom: 0;
     width: 3px;
-    background: linear-gradient(to bottom, transparent, var(--color-magenta) 25%, var(--color-magenta) 75%, transparent);
+    background: linear-gradient(to bottom, transparent, #d81b60 25%, #d81b60 75%, transparent);
     z-index: 3;
 }
 
@@ -232,11 +231,9 @@ const { form, showPassword, togglePassword, submit } = useLogin()
     width: 100%;
 }
 
-.login-logo-block {
+.logo-block {
     display: flex;
     justify-content: center;
-    filter: brightness(0) invert(1);
-
 }
 
 .login-logo {
@@ -257,37 +254,36 @@ const { form, showPassword, togglePassword, submit } = useLogin()
 }
 
 .login-tagline-label {
-    font-family: var(--font-display);
-    font-size: var(--text-xs);
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.2em;
-    color: var(--color-arena);
+    color: #e0e0e0;
     margin-bottom: 0.55rem;
 }
 
 .login-tagline-desc {
-    font-size: var(--text-sm);
+    font-size: 13px;
     line-height: 1.7;
-    color: rgba(255,255,255,0.45);
+    color: rgba(255,255,255,0.6);
 }
 
 .login-panel-footer {
     position: absolute;
     bottom: 1.25rem;
-    font-size: var(--text-xs);
+    font-size: 11px;
     letter-spacing: 0.15em;
-    color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.25);
     z-index: 2;
 }
 
-/* ── Panel derecho ───────────────────────────────────────── */
+/* ── PANEL DERECHO ─────────────────────────────────── */
 .login-panel-right {
     flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2.5rem 2rem;
-    background: var(--color-arena-lt);
+    background: #f5f5f5;
 }
 
 .login-form-wrap {
@@ -305,25 +301,26 @@ const { form, showPassword, togglePassword, submit } = useLogin()
 .login-mobile-logo-img {
     width: 180px;
     max-width: 70%;
-    height: auto;
 }
 
-/* Encabezado */
+/* ── HEADER ────────────────────────────────────────── */
 .login-head {
     margin-bottom: 1.75rem;
 }
 
 .login-title {
-    font-size: var(--text-2xl);
-    color: var(--color-vino);
+    font-size: 26px;
+    color: #000;
+    font-weight: 700;
     margin-bottom: 0.3rem;
 }
 
 .login-subtitle {
-    font-size: var(--text-sm);
+    font-size: 14px;
+    color: #666;
 }
 
-/* Campos */
+/* ── CAMPOS ────────────────────────────────────────── */
 .login-field {
     margin-bottom: 1.1rem;
 }
@@ -339,18 +336,30 @@ const { form, showPassword, togglePassword, submit } = useLogin()
     transform: translateY(-50%);
     width: 15px;
     height: 15px;
-    color: var(--color-gris-400);
-    pointer-events: none;
+    color: #999;
 }
 
 .login-input {
     padding-left: 2.35rem;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px 12px 10px 36px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.login-input:focus {
+    border-color: #000;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+    outline: none;
 }
 
 .login-input--pass {
     padding-right: 2.75rem;
 }
 
+/* Ojo */
 .login-pass-toggle {
     position: absolute;
     right: 0.75rem;
@@ -359,16 +368,19 @@ const { form, showPassword, togglePassword, submit } = useLogin()
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--color-gris-400);
-    padding: 0;
-    display: flex;
-    transition: color var(--transition-base);
+    color: #999;
 }
 
-.login-pass-toggle:hover { color: var(--color-verde); }
-.login-pass-toggle svg { width: 17px; height: 17px; }
+.login-pass-toggle:hover {
+    color: #000;
+}
 
-/* Recordar */
+.login-pass-toggle svg {
+    width: 17px;
+    height: 17px;
+}
+
+/* ── RECORDAR ─────────────────────────────────────── */
 .login-remember {
     margin-bottom: 1.4rem;
 }
@@ -377,36 +389,55 @@ const { form, showPassword, togglePassword, submit } = useLogin()
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    font-size: var(--text-sm);
-    color: var(--color-gris-500);
+    font-size: 13px;
+    color: #555;
     cursor: pointer;
 }
 
 .login-remember-chk {
     width: 14px;
     height: 14px;
-    accent-color: var(--color-verde);
+    accent-color: #000;
     cursor: pointer;
 }
 
-/* Botón */
+/* ── BOTÓN ───────────────────────────────────────── */
 .login-btn {
     width: 100%;
+    background: linear-gradient(135deg, #000000, #2b2b2b);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 10px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
 }
 
-/* Disclaimer */
+.login-btn:hover {
+    background: linear-gradient(135deg, #111, #444);
+    transform: translateY(-1px);
+}
+
+/* ── DISCLAIMER ───────────────────────────────────── */
 .login-disclaimer {
     margin-top: 1.6rem;
     text-align: center;
-    font-size: var(--text-xs);
+    font-size: 12px;
     line-height: 1.7;
+    color: #777;
 }
 
-/* ── Responsive ──────────────────────────────────────────── */
+/* ── RESPONSIVE ───────────────────────────────────── */
 @media (max-width: 768px) {
     .login-root { flex-direction: column; }
+
     .login-panel-left { display: none; }
-    .login-panel-right { padding: 3rem 1.5rem; align-items: flex-start; }
+
+    .login-panel-right {
+        padding: 3rem 1.5rem;
+        align-items: flex-start;
+    }
+
     .login-mobile-logo { display: flex; }
 }
 </style>
