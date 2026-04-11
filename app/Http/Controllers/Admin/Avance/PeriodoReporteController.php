@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admin\Avance;
 
 use App\Http\Controllers\Controller;
+use App\Models\CatLineasAccionEje;
+use App\Models\CatLineasAccionPrioridad;
 use App\Models\LineaAccion;
+use App\Models\OrganismoImplementador;
 use App\Models\PeriodoReporte;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +28,8 @@ class PeriodoReporteController extends Controller
                 'fecha_inicio'         => $p->fecha_inicio->format('d/m/Y'),
                 'fecha_fin'            => $p->fecha_fin->format('d/m/Y'),
                 'fecha_limite_reporte' => $p->fecha_limite_reporte->format('d/m/Y'),
-                'activo'               => $p->activo,
+                'activo'               => $p->activo,          // valor DB (para el toggle)
+                'esta_abierto'         => $p->estaAbierto(),   // evaluación dinámica con now()
                 'descripcion'          => $p->descripcion,
                 'total_avances'        => $p->historial_avances_count,
                 'total_lineas'         => DB::table('periodo_linea')
@@ -34,7 +38,11 @@ class PeriodoReporteController extends Controller
             ]);
 
         return Inertia::render('Admin/Periodos/Index', [
-            'periodos' => $periodos,
+            'periodos'    => $periodos,
+            'ejes'        => CatLineasAccionEje::select('id', 'eje')->orderBy('eje')->get(),
+            'organismos'  => OrganismoImplementador::select('id', 'nombre')
+                                ->where('activo', true)->orderBy('nombre')->get(),
+            'prioridades' => CatLineasAccionPrioridad::select('id', 'prioridad')->orderBy('prioridad')->get(),
         ]);
     }
 
@@ -87,6 +95,7 @@ class PeriodoReporteController extends Controller
                 'fecha_fin'            => $periodo->fecha_fin->format('d/m/Y'),
                 'fecha_limite_reporte' => $periodo->fecha_limite_reporte->format('d/m/Y'),
                 'activo'               => $periodo->activo,
+                'esta_abierto'         => $periodo->estaAbierto(),
                 'descripcion'          => $periodo->descripcion,
             ],
             'stats' => [
