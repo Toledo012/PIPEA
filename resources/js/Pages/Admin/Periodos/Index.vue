@@ -4,7 +4,10 @@ import { ref, computed, watch } from 'vue'
 import { useForm, usePage } from '@inertiajs/vue3'
 
 const props = defineProps({
-    periodos: { type: Array, default: () => [] },
+    periodos:   { type: Array, default: () => [] },
+    ejes:       { type: Array, default: () => [] },
+    organismos: { type: Array, default: () => [] },
+    prioridades:{ type: Array, default: () => [] },
 })
 
 // ── Flash ─────────────────────────────────────────────────────────────────────
@@ -80,6 +83,45 @@ const guardarProrroga = () => {
             verDetalle(periodoDetalle.value)
         },
     })
+}
+
+// ── Modal exportar ────────────────────────────────────────────────────────────
+const modalExportar  = ref(false)
+const exportTipo     = ref('general')        // 'general' | 'personalizado'
+const exportFormato  = ref('pdf')            // 'pdf' | 'excel' | 'ambos'
+const exportFiltros  = ref({ eje_id: '', organismo_id: '', estatus: '', prioridad_id: '' })
+
+const abrirExportar = () => {
+    exportTipo.value    = 'general'
+    exportFormato.value = 'pdf'
+    exportFiltros.value = { eje_id: '', organismo_id: '', estatus: '', prioridad_id: '' }
+    modalExportar.value = true
+}
+
+const ejecutarExport = () => {
+    if (!detalleData.value) return
+    const periodoId = detalleData.value.periodo.id
+
+    const params = new URLSearchParams()
+    if (exportTipo.value === 'personalizado') {
+        if (exportFiltros.value.eje_id)        params.set('eje_id',        exportFiltros.value.eje_id)
+        if (exportFiltros.value.organismo_id)  params.set('organismo_id',  exportFiltros.value.organismo_id)
+        if (exportFiltros.value.estatus)       params.set('estatus',       exportFiltros.value.estatus)
+        if (exportFiltros.value.prioridad_id)  params.set('prioridad_id',  exportFiltros.value.prioridad_id)
+    }
+    const qs = params.toString() ? '?' + params.toString() : ''
+
+    if (exportFormato.value === 'pdf' || exportFormato.value === 'ambos') {
+        window.open(route('admin.periodos.exportar.pdf', periodoId) + qs, '_blank')
+    }
+    if (exportFormato.value === 'excel' || exportFormato.value === 'ambos') {
+        const delay = exportFormato.value === 'ambos' ? 600 : 0
+        setTimeout(() => {
+            window.open(route('admin.periodos.exportar.excel', periodoId) + qs, '_blank')
+        }, delay)
+    }
+
+    modalExportar.value = false
 }
 
 // ── Toggle activo ─────────────────────────────────────────────────────────────
@@ -172,8 +214,8 @@ const colorIcono = (tipo) => {
                     <div class="periodo-card-head">
                         <div class="periodo-nombre-row">
                             <h3 class="periodo-nombre">{{ p.nombre }}</h3>
-                            <span :class="['badge-estado', p.activo ? 'badge-estado--activo' : 'badge-estado--inactivo']">
-                                {{ p.activo ? 'Abierto' : 'Cerrado' }}
+                            <span :class="['badge-estado', p.esta_abierto ? 'badge-estado--activo' : 'badge-estado--inactivo']">
+                                {{ p.esta_abierto ? 'Abierto' : 'Cerrado' }}
                             </span>
                         </div>
                         <p v-if="p.descripcion" class="periodo-desc">{{ p.descripcion }}</p>
@@ -423,6 +465,12 @@ const colorIcono = (tipo) => {
                     </div>
 
                     <div class="modal-foot">
+                        <button v-if="detalleData" class="btn btn-export" @click="abrirExportar">
+                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;flex-shrink:0">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Exportar reporte
+                        </button>
                         <button class="btn btn-ghost" @click="modalDetalle = false">Cerrar</button>
                     </div>
                 </div>
@@ -455,6 +503,132 @@ const colorIcono = (tipo) => {
                     <div class="modal-foot">
                         <button class="btn btn-ghost" @click="modalProrroga = false" :disabled="formProrroga.processing">Cancelar</button>
                         <button class="btn btn-primary" @click="guardarProrroga" :disabled="formProrroga.processing">Habilitar prórroga</button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- ══════════════════════════════════════════════════════════
+             MODAL EXPORTAR
+        ══════════════════════════════════════════════════════════ -->
+        <Teleport to="body">
+            <div v-if="modalExportar" class="modal-overlay" @click.self="modalExportar = false">
+                <div class="modal modal--export">
+                    <div class="modal-head">
+                        <div>
+                            <h2 class="modal-title">Exportar reporte</h2>
+                            <p class="modal-subtitle">{{ detalleData?.periodo?.nombre }}</p>
+                        </div>
+                        <button class="modal-close" @click="modalExportar = false">
+                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+
+                        <!-- Sección 1: Tipo de reporte -->
+                        <div class="export-seccion">
+                            <p class="export-seccion-titulo">Tipo de reporte</p>
+                            <div class="export-radio-group">
+                                <label :class="['export-radio', exportTipo === 'general' && 'export-radio--active']">
+                                    <input type="radio" v-model="exportTipo" value="general" class="export-radio-input"/>
+                                    <div class="export-radio-body">
+                                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;flex-shrink:0;color:var(--color-verde)"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd"/></svg>
+                                        <div>
+                                            <p class="export-radio-label">General</p>
+                                            <p class="export-radio-desc">Todo el período sin filtros</p>
+                                        </div>
+                                    </div>
+                                </label>
+                                <label :class="['export-radio', exportTipo === 'personalizado' && 'export-radio--active']">
+                                    <input type="radio" v-model="exportTipo" value="personalizado" class="export-radio-input"/>
+                                    <div class="export-radio-body">
+                                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:16px;height:16px;flex-shrink:0;color:var(--color-magenta)"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
+                                        <div>
+                                            <p class="export-radio-label">Personalizado</p>
+                                            <p class="export-radio-desc">Con filtros específicos</p>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Sección 2: Filtros (solo en personalizado) -->
+                        <Transition name="filtros-slide">
+                            <div v-if="exportTipo === 'personalizado'" class="export-filtros">
+                                <p class="export-seccion-titulo">Filtros</p>
+                                <div class="export-filtros-grid">
+                                    <div class="field">
+                                        <label class="field-label">Eje estratégico</label>
+                                        <select v-model="exportFiltros.eje_id" class="field-input">
+                                            <option value="">Todos los ejes</option>
+                                            <option v-for="e in ejes" :key="e.id" :value="e.id">{{ e.eje }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label class="field-label">Organismo / Entidad</label>
+                                        <select v-model="exportFiltros.organismo_id" class="field-input">
+                                            <option value="">Todos los organismos</option>
+                                            <option v-for="o in organismos" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label class="field-label">Estatus</label>
+                                        <select v-model="exportFiltros.estatus" class="field-input">
+                                            <option value="">Todos</option>
+                                            <option value="con_reporte">Con reporte</option>
+                                            <option value="sin_reporte">Sin reporte</option>
+                                            <option value="bloqueado">Bloqueado</option>
+                                        </select>
+                                    </div>
+                                    <div class="field">
+                                        <label class="field-label">Prioridad / Línea de acción</label>
+                                        <select v-model="exportFiltros.prioridad_id" class="field-input">
+                                            <option value="">Todas las prioridades</option>
+                                            <option v-for="p in prioridades" :key="p.id" :value="p.id">{{ p.prioridad }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+
+                        <!-- Sección 3: Formato -->
+                        <div class="export-seccion">
+                            <p class="export-seccion-titulo">Formato de exportación</p>
+                            <div class="export-formato-grid">
+                                <button
+                                    v-for="fmt in [
+                                        { key: 'pdf',   label: 'PDF',   sub: 'Reporte institucional completo', color: '#AE1922', icon: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
+                                        { key: 'excel', label: 'Excel', sub: 'Datos tabulares con hoja de detalle', color: '#009887', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                                        { key: 'ambos', label: 'Ambos', sub: 'Genera y descarga los dos archivos', color: '#C90166', icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4' },
+                                    ]"
+                                    :key="fmt.key"
+                                    :class="['export-fmt-btn', exportFormato === fmt.key && 'export-fmt-btn--active']"
+                                    :style="exportFormato === fmt.key ? `--fmt-color:${fmt.color}` : ''"
+                                    @click="exportFormato = fmt.key"
+                                    type="button"
+                                >
+                                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"
+                                        :style="{ color: exportFormato === fmt.key ? fmt.color : 'var(--color-gris-400)' }"
+                                        style="width:24px;height:24px;margin-bottom:6px;flex-shrink:0">
+                                        <path stroke-linecap="round" stroke-linejoin="round" :d="fmt.icon"/>
+                                    </svg>
+                                    <span class="export-fmt-label" :style="exportFormato === fmt.key ? `color:${fmt.color}` : ''">{{ fmt.label }}</span>
+                                    <span class="export-fmt-sub">{{ fmt.sub }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-foot">
+                        <button class="btn btn-ghost" @click="modalExportar = false">Cancelar</button>
+                        <button class="btn btn-primary" @click="ejecutarExport">
+                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;flex-shrink:0">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                            Generar y descargar
+                        </button>
                     </div>
                 </div>
             </div>
@@ -597,4 +771,40 @@ const colorIcono = (tipo) => {
 
 .btn-spin { animation:spin .8s linear infinite; }
 @keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── Botón exportar ── */
+.btn-export { display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .9rem;border-radius:var(--radius-md);border:1.5px solid var(--color-verde);background:var(--color-verde-lt);color:var(--color-verde);font-size:var(--text-sm);font-weight:600;cursor:pointer;transition:all var(--transition-base); }
+.btn-export:hover { background:var(--color-verde);color:white; }
+
+/* ── Modal exportar ── */
+.modal--export { max-width:600px; }
+
+/* Secciones */
+.export-seccion { display:flex;flex-direction:column;gap:.6rem; }
+.export-seccion-titulo { font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--color-gris-500); }
+
+/* Radio tipo */
+.export-radio-group { display:grid;grid-template-columns:1fr 1fr;gap:.6rem; }
+.export-radio { cursor:pointer;border-radius:var(--radius-md);border:1.5px solid var(--color-gris-200);background:var(--color-blanco);transition:all var(--transition-base);overflow:hidden; }
+.export-radio--active { border-color:var(--color-verde);background:var(--color-verde-lt); }
+.export-radio:hover:not(.export-radio--active) { border-color:var(--color-gris-300);background:var(--color-gris-50,#fafafa); }
+.export-radio-input { display:none; }
+.export-radio-body { display:flex;align-items:flex-start;gap:.65rem;padding:.75rem 1rem; }
+.export-radio-label { font-size:var(--text-sm);font-weight:600;color:var(--color-gris-800);margin-bottom:1px; }
+.export-radio-desc  { font-size:var(--text-xs);color:var(--color-gris-500); }
+
+/* Filtros */
+.export-filtros { background:var(--color-gris-50,#fafafa);border:1px solid var(--color-gris-200);border-radius:var(--radius-md);padding:.85rem 1rem;display:flex;flex-direction:column;gap:.75rem; }
+.export-filtros-grid { display:grid;grid-template-columns:1fr 1fr;gap:.75rem; }
+.filtros-slide-enter-active,.filtros-slide-leave-active { transition:all .2s ease; }
+.filtros-slide-enter-from,.filtros-slide-leave-to { opacity:0;transform:translateY(-8px); }
+
+/* Formato */
+.export-formato-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem; }
+.export-fmt-btn { display:flex;flex-direction:column;align-items:center;padding:.85rem .5rem;border-radius:var(--radius-md);border:1.5px solid var(--color-gris-200);background:var(--color-blanco);cursor:pointer;transition:all var(--transition-base);text-align:center; }
+.export-fmt-btn:hover:not(.export-fmt-btn--active) { border-color:var(--color-gris-300);background:var(--color-gris-50,#fafafa); }
+.export-fmt-btn--active { border-color:var(--fmt-color, var(--color-verde));background:color-mix(in srgb, var(--fmt-color, var(--color-verde)) 10%, transparent); }
+.export-fmt-label { font-size:var(--text-sm);font-weight:700;color:var(--color-gris-800);margin-bottom:2px; }
+.export-fmt-sub   { font-size:10px;color:var(--color-gris-500);line-height:1.35; }
+.export-fmt-btn--active .export-fmt-label { color:var(--fmt-color, var(--color-verde)); }
 </style>

@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\Dashboard\AdminDashboardController;
 use App\Http\Controllers\Admin\Organismos\OrganismoController;
 use App\Http\Controllers\Admin\Usuarios\UsuarioController;
 use App\Http\Controllers\Admin\Avance\PeriodoReporteController;
+use App\Http\Controllers\Admin\Avance\ExportPeriodoController;
 use App\Http\Controllers\Admin\LineasAccion\LineaAccionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\User\Avance\EvidenciasController;
@@ -96,6 +97,9 @@ Route::middleware(['auth', 'activo'])->group(function () {
                 Route::post  ('/{periodo}/prorroga',  [PeriodoReporteController::class, 'prorroga'])    ->name('prorroga');
                 // Datos del período para el modal de detalle (JSON)
                 Route::get   ('/{periodo}/detalle',   [PeriodoReporteController::class, 'detalle'])     ->name('detalle');
+                // Exportación
+                Route::get   ('/{periodo}/exportar/pdf',   [ExportPeriodoController::class, 'pdf'])   ->name('exportar.pdf');
+                Route::get   ('/{periodo}/exportar/excel', [ExportPeriodoController::class, 'excel']) ->name('exportar.excel');
             });
         });
 
