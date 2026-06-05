@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User\UserLineas;
 use App\Http\Controllers\Controller;
 use App\Models\LineaAccion;
 use App\Models\PeriodoReporte;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,15 +18,37 @@ class UserLineasController extends Controller
         $usuario       = Auth::user();
         $periodoActivo = PeriodoReporte::activo()->first();
 
-        // IDs habilitados para reportar
-        $lineasHabilitadas = $periodoActivo
+        // Todos los pivots del período (para prórrogas y estado por línea)
+        $todosLosPivots = $periodoActivo
             ? DB::table('periodo_linea')
                 ->where('id_periodo', $periodoActivo->id)
-                ->where('habilitado', 1)
-                ->pluck('id_linea')
+                ->get()
+                ->keyBy('id_linea')
+            : collect();
+
+        // IDs habilitados para reportar ahora (verifica fechas correctamente)
+        $lineasHabilitadas = [];
+        if ($periodoActivo) {
+            $hoy             = now()->startOfDay();
+            $limiteGlobalOk  = $hoy->lte($periodoActivo->fecha_limite_reporte->copy()->endOfDay());
+            $hoyStr          = $hoy->toDateString();
+
+            $lineasHabilitadas = $todosLosPivots
+                ->filter(function ($pivot) use ($limiteGlobalOk, $hoyStr) {
+                    if (! $pivot->habilitado) {
+                        return false;
+                    }
+                    // Si tiene prórroga activa, puede reportar independientemente del plazo global
+                    if ($pivot->prorroga_hasta && $pivot->prorroga_hasta >= $hoyStr) {
+                        return true;
+                    }
+                    // Sin prórroga: sólo si el período global sigue abierto y la línea no tiene prórroga vencida
+                    return $limiteGlobalOk && ! $pivot->prorroga_hasta;
+                })
+                ->keys()
                 ->map(fn($id) => (int) $id)
-                ->toArray()
-            : [];
+                ->toArray();
+        }
 
         // Avances ya registrados en este período — keyed por id_linea_accion
         $avancesDelPeriodo = $periodoActivo
@@ -34,6 +57,28 @@ class UserLineasController extends Controller
                 ->get()
                 ->keyBy('id_linea_accion')
             : collect();
+
+        // Avances anteriores (de períodos previos) — una sola query, agrupados por línea.
+        // Trae todos los avances del usuario que NO son del período activo, con join al período
+        // para mostrar su nombre. Luego se agrupan por línea y se limitan en el map.
+        $avancesAnterioresQuery = DB::table('historial_avances as h')
+            ->leftJoin('periodos_reporte as p', 'p.id', '=', 'h.id_periodo')
+            ->where('h.id_usuario', $usuario->id)
+            ->select([
+                'h.id', 'h.id_linea_accion', 'h.id_periodo',
+                'h.estatus', 'h.avance_cualitativo', 'h.avance_cuantitativo',
+                'h.fecha_avance', 'h.comentario', 'h.medio_verificacion',
+                'h.url', 'h.documento', 'h.archivo_path',
+                'h.fecha_registro',
+                'p.nombre as periodo_nombre',
+            ])
+            ->orderByDesc('h.fecha_registro');
+
+        if ($periodoActivo) {
+            $avancesAnterioresQuery->where('h.id_periodo', '<>', $periodoActivo->id);
+        }
+
+        $avancesAnteriores = $avancesAnterioresQuery->get()->groupBy('id_linea_accion');
 
         $lineas = LineaAccion::with([
             'eje', 'objetivo', 'prioridad',
@@ -44,8 +89,37 @@ class UserLineasController extends Controller
             ->where('activo', true)
             ->orderBy('id')
             ->get()
-            ->map(function ($l) use ($lineasHabilitadas, $avancesDelPeriodo) {
+            ->map(function ($l) use ($lineasHabilitadas, $avancesDelPeriodo, $todosLosPivots, $avancesAnteriores) {
                 $avance = $avancesDelPeriodo->get($l->id);
+                $pivot  = $todosLosPivots->get($l->id);
+
+                $hoyStr = now()->toDateString();
+                $prorrogaActiva = $pivot?->prorroga_hasta && $pivot->prorroga_hasta >= $hoyStr;
+
+                // Historial limitado a últimos 10 anteriores
+                $historial = ($avancesAnteriores->get($l->id) ?? collect())
+                    ->take(10)
+                    ->map(fn($h) => [
+                        'id'                  => $h->id,
+                        'periodo_nombre'      => $h->periodo_nombre,
+                        'estatus'             => $h->estatus,
+                        'avance_cualitativo'  => $h->avance_cualitativo,
+                        'avance_cuantitativo' => $h->avance_cuantitativo,
+                        'fecha_avance'        => $h->fecha_avance
+                            ? Carbon::parse($h->fecha_avance)->format('d/m/Y')
+                            : null,
+                        'fecha_registro'      => $h->fecha_registro
+                            ? Carbon::parse($h->fecha_registro)->format('d/m/Y H:i')
+                            : null,
+                        'comentario'          => $h->comentario,
+                        'medio_verificacion'  => $h->medio_verificacion,
+                        'url'                 => $h->url,
+                        'documento'           => $h->documento,
+                        'archivo_url'         => $h->archivo_path
+                            ? asset('storage/' . $h->archivo_path)
+                            : null,
+                    ])
+                    ->values();
 
                 return [
                     'id'                 => $l->id,
@@ -71,6 +145,10 @@ class UserLineasController extends Controller
                     'porcentaje_avance'  => $l->porcentaje_avance,
                     'ultimo_valor_avance'=> $l->ultimo_valor_avance,
                     'puede_reportar'     => in_array((int) $l->id, $lineasHabilitadas, true),
+                    'prorroga_activa'    => (bool) $prorrogaActiva,
+                    'prorroga_hasta'     => $pivot?->prorroga_hasta
+                        ? Carbon::parse($pivot->prorroga_hasta)->format('d/m/Y')
+                        : null,
                     'indicador_completo' => $l->indicador_completo,
                     'ya_reporto'         => $avance !== null,
                     'reporte_actual'     => $avance ? [
@@ -86,6 +164,7 @@ class UserLineasController extends Controller
                             ? asset('storage/' . $avance->archivo_path)
                             : null,
                     ] : null,
+                    'historial_anteriores' => $historial,
                 ];
             });
 
@@ -106,6 +185,7 @@ class UserLineasController extends Controller
                 'id'                   => $periodoActivo->id,
                 'nombre'               => $periodoActivo->nombre,
                 'fecha_limite_reporte' => $periodoActivo->fecha_limite_reporte->format('d/m/Y'),
+                'estado'               => $periodoActivo->estado,
             ] : null,
         ]);
     }
@@ -212,6 +292,7 @@ class UserLineasController extends Controller
                 'id'                   => $periodo->id,
                 'nombre'               => $periodo->nombre,
                 'fecha_limite_reporte' => $periodo->fecha_limite_reporte->format('d/m/Y'),
+                'estado'               => $periodo->estado,
             ] : null,
         ]);
     }

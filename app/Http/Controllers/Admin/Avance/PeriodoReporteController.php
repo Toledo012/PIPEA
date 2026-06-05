@@ -38,6 +38,7 @@ class PeriodoReporteController extends Controller
                     'fecha_limite_reporte' => $p->fecha_limite_reporte?->format('d/m/Y'),
                     'activo'               => (bool) $p->activo,
                     'esta_abierto'         => $p->estaAbierto(),
+                    'estado'               => $p->estado,
                     'descripcion'          => $p->descripcion,
                     'total_avances'        => $totalAvances,
                     'total_lineas'         => $totalLineas,
@@ -161,17 +162,19 @@ class PeriodoReporteController extends Controller
 
     public function toggleActivo(PeriodoReporte $periodo): RedirectResponse
     {
-        if (! $periodo->activo) {
-            PeriodoReporte::where('activo', true)->update(['activo' => false]);
+        // Solo se puede abrir manualmente un período recién creado.
+        // Los estados abierto / cerrado_posible / en_prorroga / cerrado_definitivo
+        // se gestionan automáticamente por fecha o mediante prórroga.
+        if ($periodo->estado !== 'recien_creado') {
+            return back()->with('error', "El período '{$periodo->nombre}' ya fue abierto y no puede reabrirse manualmente. Usa prórroga para extender líneas específicas.");
         }
 
-        $periodo->update([
-            'activo' => ! $periodo->activo,
-        ]);
+        // Desactivar cualquier otro período activo
+        PeriodoReporte::where('activo', true)->update(['activo' => false]);
 
-        $estado = $periodo->fresh()->activo ? 'abierto' : 'cerrado';
+        $periodo->update(['activo' => true]);
 
-        return back()->with('success', "Período '{$periodo->nombre}' {$estado}.");
+        return back()->with('success', "Período '{$periodo->nombre}' abierto correctamente.");
     }
 
     public function prorroga(Request $request, PeriodoReporte $periodo): RedirectResponse

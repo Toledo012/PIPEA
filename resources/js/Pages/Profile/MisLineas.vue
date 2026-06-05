@@ -1,5 +1,5 @@
 <script setup>
-import UserLayout from '@/Layouts/UserLayout.vue'
+import UserLayout from '@/Layouts/OrganismoLayout.vue'
 import { ref, computed, watch } from 'vue'
 import { useForm, usePage } from '@inertiajs/vue3'
 

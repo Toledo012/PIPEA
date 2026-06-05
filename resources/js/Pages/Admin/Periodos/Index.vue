@@ -418,8 +418,14 @@ const colorIcono = (tipo) => {
                     <div class="periodo-card-head">
                         <div class="periodo-nombre-row">
                             <h3 class="periodo-nombre">{{ p.nombre }}</h3>
-                            <span :class="['badge-estado', p.esta_abierto ? 'badge-estado--activo' : 'badge-estado--inactivo']">
-                                {{ p.esta_abierto ? 'Abierto' : 'Cerrado' }}
+                            <span :class="['badge-estado', `badge-estado--${p.estado ?? 'recien_creado'}`]">
+                                {{ {
+                                    recien_creado:      'Pendiente',
+                                    abierto:            'Abierto',
+                                    cerrado_posible:    'Cerrado',
+                                    en_prorroga:        'En prórroga',
+                                    cerrado_definitivo: 'Cerrado definitivo',
+                                }[p.estado] ?? 'Pendiente' }}
                             </span>
                         </div>
 
@@ -476,12 +482,23 @@ const colorIcono = (tipo) => {
                             Ver detalle
                         </button>
 
+                        <!-- Abrir período (solo para recién creados) -->
                         <button
-                            :class="['btn btn-sm', p.activo ? 'btn-danger' : 'btn-primary']"
+                            v-if="p.estado === 'recien_creado'"
+                            class="btn btn-primary btn-sm"
                             :disabled="toggling === p.id"
                             @click="togglePeriodo(p)"
                         >
-                            {{ p.activo ? 'Cerrar período' : 'Abrir período' }}
+                            {{ toggling === p.id ? '...' : 'Abrir período' }}
+                        </button>
+
+                        <!-- Otorgar prórroga (período cerrado, no hubo prórrogas aún) -->
+                        <button
+                            v-else-if="p.estado === 'cerrado_posible'"
+                            class="btn btn-sm btn-prorroga"
+                            @click="verDetalle(p)"
+                        >
+                            Otorgar prórroga
                         </button>
                     </div>
                 </div>
@@ -1017,6 +1034,13 @@ const colorIcono = (tipo) => {
 .badge-estado { display:inline-flex;align-items:center;padding:.15rem .6rem;border-radius:var(--radius-full);font-size:var(--text-xs);font-weight:700; }
 .badge-estado--activo { background:var(--color-verde-lt);color:var(--color-verde); }
 .badge-estado--inactivo { background:var(--color-gris-200);color:var(--color-gris-500); }
+.badge-estado--recien_creado { background:var(--color-gris-200);color:var(--color-gris-500); }
+.badge-estado--abierto { background:var(--color-verde-lt);color:var(--color-verde); }
+.badge-estado--cerrado_posible { background:#fef3c7;color:#92610a; }
+.badge-estado--en_prorroga { background:#ede9fe;color:#5b21b6; }
+.badge-estado--cerrado_definitivo { background:var(--color-gris-200);color:var(--color-gris-500); }
+.btn-prorroga { background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;font-weight:600;border-radius:var(--radius-md);padding:.35rem .75rem;font-size:var(--text-sm);cursor:pointer;transition:all var(--transition-base); }
+.btn-prorroga:hover { background:#ddd6fe;color:#4c1d95; }
 
 .modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:200;padding:1rem; }
 .modal { background:var(--color-blanco);border-radius:var(--radius-xl);box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-height:92vh;display:flex;flex-direction:column; }

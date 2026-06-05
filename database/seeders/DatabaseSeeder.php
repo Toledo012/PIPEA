@@ -30,13 +30,13 @@ class DatabaseSeeder extends Seeder
             OrganismoSeeder::class,
 
             // 5. Usuarios — depende de roles y organismos
-            UsuariosPruebaSeeder::class,
+            Usuariospruebaseeder::class,
 
 
             OrganismosFrecuenciasFaltantesSeeder::class,
 
 
-            LineasAccionSeeder::class,
+            Lineasaccionseeder::class,
 
 
         ]);

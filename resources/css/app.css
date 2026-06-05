@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,7 +16,6 @@
    Gilroy          → cuerpo, labels, párrafos (complementaria)
    Nunito          → fallback Google Fonts
    ---------------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap');
 
 /* Novecento Wide y Gilroy deben cargarse localmente si se tienen
    las licencias. Si no, Nunito sirve como fallback institucional.

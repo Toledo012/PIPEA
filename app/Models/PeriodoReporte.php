@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class PeriodoReporte extends Model
 {
@@ -50,6 +51,63 @@ class PeriodoReporte extends Model
     public function scopeActivo($query)
     {
         return $query->where('activo', true);
+    }
+
+    // ── Estado del período ────────────────────────────────────────────────────
+
+    /**
+     * Retorna el estado calculado del período:
+     *  - recien_creado:      activo=false (nunca ha sido abierto)
+     *  - abierto:            activo=true y hoy <= fecha_limite_reporte
+     *  - cerrado_posible:    activo=true, pasó la fecha límite, sin prórroga alguna
+     *  - en_prorroga:        activo=true, pasó la fecha límite, hay prórrogas activas
+     *  - cerrado_definitivo: activo=true, pasó la fecha límite, hubo prórrogas pero ya vencieron
+     */
+    public function getEstadoAttribute(): string
+    {
+        if (! $this->activo) {
+            return 'recien_creado';
+        }
+
+        $hoy = now()->startOfDay();
+
+        if ($hoy->lte($this->fecha_limite_reporte->copy()->endOfDay())) {
+            return 'abierto';
+        }
+
+        // Pasó la fecha límite — revisar prórrogas
+        if ($this->tieneProrrogaActiva()) {
+            return 'en_prorroga';
+        }
+
+        if ($this->tuvoProrroga()) {
+            return 'cerrado_definitivo';
+        }
+
+        return 'cerrado_posible';
+    }
+
+    /**
+     * ¿Existe al menos una línea con prórroga vigente (hoy <= prorroga_hasta)?
+     */
+    public function tieneProrrogaActiva(): bool
+    {
+        return DB::table('periodo_linea')
+            ->where('id_periodo', $this->id)
+            ->whereNotNull('prorroga_hasta')
+            ->where('prorroga_hasta', '>=', now()->toDateString())
+            ->exists();
+    }
+
+    /**
+     * ¿Se otorgó alguna prórroga en este período (sin importar si ya venció)?
+     */
+    public function tuvoProrroga(): bool
+    {
+        return DB::table('periodo_linea')
+            ->where('id_periodo', $this->id)
+            ->whereNotNull('prorroga_hasta')
+            ->exists();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

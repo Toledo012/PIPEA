@@ -1,6 +1,6 @@
 <script setup>
 import OrganismoLayout from '@/Layouts/OrganismoLayout.vue'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useForm, usePage } from '@inertiajs/vue3'
 
 /**
@@ -41,11 +41,21 @@ watch(() => page.props.flash?.error,   v => { if (v) mostrarFlash(v, 'error')   
 // ── Modal detalle / registrar avance ─────────────────────────────────────────
 const modalLinea  = ref(false)
 const lineaActual = ref(null)
-const tabActiva   = ref('detalle') // 'detalle' | 'historial' | 'registrar'
+const tabActiva   = ref('detalle') // 'detalle' | 'mi-avance' | 'registrar'
+
+// ── Modal de errores de validación ───────────────────────────────────────────
+const modalErrores = ref(false)
+const erroresLista = ref([])
+
+const cerrarModalErrores = () => {
+    modalErrores.value = false
+    erroresLista.value = []
+}
 
 const verLinea = (linea) => {
     lineaActual.value = linea
-    tabActiva.value   = 'detalle'
+    // Si ya reportó, abrir directo en "Mi avance" (mejor UX)
+    tabActiva.value   = linea?.ya_reporto ? 'mi-avance' : 'detalle'
     modalLinea.value  = true
     formAvance.reset()
     formAvance.clearErrors()
@@ -57,6 +67,35 @@ const cerrarModal = () => {
     formAvance.reset()
     formAvance.clearErrors()
 }
+
+// ── Auto-open via query param ?registrar=ID ──────────────────────────────────
+// Permite que LineaDetalle (u otras vistas) salten directo al modal de registro
+// sin duplicar el formulario en cada página.
+onMounted(() => {
+    const params = new URLSearchParams(window.location.search)
+    const idStr  = params.get('registrar')
+    if (!idStr) return
+
+    const id     = Number(idStr)
+    const linea  = props.lineas.find(l => Number(l.id) === id)
+    if (!linea) return
+
+    // Abre el modal y selecciona tab según el estado de la línea
+    lineaActual.value = linea
+    if (linea.puede_reportar && !linea.ya_reporto) {
+        tabActiva.value = 'registrar'
+    } else if (linea.ya_reporto) {
+        tabActiva.value = 'mi-avance'
+    } else {
+        tabActiva.value = 'detalle'
+    }
+    modalLinea.value = true
+
+    // Limpiar la URL para que recargar no reabra el modal
+    const url = new URL(window.location.href)
+    url.searchParams.delete('registrar')
+    window.history.replaceState({}, '', url.toString())
+})
 
 // ── Formulario de avance ──────────────────────────────────────────────────────
 const formAvance = useForm({
@@ -79,6 +118,18 @@ const seleccionarArchivo = (e) => {
     archivoNombre.value = file.name
 }
 
+// Etiquetas legibles para mostrar errores en el modal
+const labelCampo = {
+    estatus:            'Estado del avance',
+    avance_cualitativo: 'Valor alcanzado',
+    fecha_avance:       'Fecha del avance',
+    comentario:         'Comentario / descripción',
+    avances_linea:      'Notas adicionales',
+    medio_verificacion: 'Medio de verificación',
+    url:                'Enlace externo',
+    archivo:            'Archivo de evidencia',
+}
+
 const enviarAvance = () => {
     if (!lineaActual.value) return
     formAvance.post(
@@ -87,6 +138,16 @@ const enviarAvance = () => {
             forceFormData: true,
             onSuccess: () => {
                 cerrarModal()
+            },
+            onError: (errores) => {
+                // Mostrar todos los errores agrupados en un modal
+                erroresLista.value = Object.entries(errores).map(([campo, mensaje]) => ({
+                    campo: labelCampo[campo] ?? campo,
+                    mensaje,
+                }))
+                if (erroresLista.value.length) {
+                    modalErrores.value = true
+                }
             },
         }
     )
@@ -103,12 +164,28 @@ const lineasFiltradas = computed(() =>
             l.nombre_indicador?.toLowerCase().includes(busqueda.value.toLowerCase())
 
         const matchE = !filtroEstado.value ||
-            (filtroEstado.value === 'pendiente'   && l.puede_reportar && (l.porcentaje_avance ?? 0) < 100) ||
-            (filtroEstado.value === 'reporto'     && (l.porcentaje_avance ?? 0) > 0) ||
+            // "Pendiente"   = puede reportar y aún no envió avance en el período
+            (filtroEstado.value === 'pendiente'   && l.puede_reportar && !l.ya_reporto) ||
+            // "Con avance"  = ya reportó en el período actual (independiente del %)
+            (filtroEstado.value === 'reporto'     && l.ya_reporto) ||
+            // "Sin período" = no puede reportar (cerrado, no habilitado, etc.)
             (filtroEstado.value === 'sin_periodo' && !l.puede_reportar)
 
         return matchQ && matchE
     })
+)
+
+// ── Secciones durante prórroga (Mejora 3) ────────────────────────────────────
+const enModoProrroga = computed(() =>
+    props.periodo_activo?.estado === 'en_prorroga'
+)
+
+const lineasConProrroga = computed(() =>
+    lineasFiltradas.value.filter(l => l.prorroga_activa)
+)
+
+const lineasSinProrroga = computed(() =>
+    lineasFiltradas.value.filter(l => !l.prorroga_activa)
 )
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -154,9 +231,13 @@ const avanceEsperado = computed(() => {
                     <h1 class="page-title">Mis líneas de acción</h1>
                 </div>
                 <!-- Banner período activo -->
-                <div v-if="periodo_activo" class="periodo-banner">
+                <div v-if="periodo_activo && periodo_activo.estado === 'abierto'" class="periodo-banner">
                     <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;flex-shrink:0;color:var(--color-verde)"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
                     <span>Período abierto: <strong>{{ periodo_activo.nombre }}</strong> — Límite {{ periodo_activo.fecha_limite_reporte }}</span>
+                </div>
+                <div v-else-if="periodo_activo && periodo_activo.estado === 'en_prorroga'" class="periodo-banner periodo-banner--prorroga">
+                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                    <span>Período en prórroga: <strong>{{ periodo_activo.nombre }}</strong> — Solo las líneas con prórroga activa pueden reportar</span>
                 </div>
                 <div v-else class="periodo-banner periodo-banner--cerrado">
                     <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
@@ -185,8 +266,99 @@ const avanceEsperado = computed(() => {
                 <p>No hay líneas que coincidan.</p>
             </div>
 
-            <!-- Cards de líneas -->
-            <div class="lineas-grid">
+            <!-- ══════════════════════
+                 MODO PRÓRROGA
+            ══════════════════════ -->
+            <template v-else-if="enModoProrroga">
+
+                <!-- Líneas con prórroga activa -->
+                <div v-if="lineasConProrroga.length" class="seccion-bloque">
+                    <div class="seccion-bloque-header seccion-bloque-header--prorroga">
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                        Líneas con prórroga activa ({{ lineasConProrroga.length }})
+                    </div>
+                    <div class="lineas-grid">
+                        <div v-for="l in lineasConProrroga" :key="l.id" class="linea-card linea-card--prorroga" @click="verLinea(l)">
+                            <div class="linea-badges">
+                                <span class="badge-num badge-num--vino">{{ String(l.numero_eje).padStart(2,'0') }}</span>
+                                <span class="badge-num badge-num--verde">{{ String(l.numero_objetivo).padStart(2,'0') }}</span>
+                                <span class="badge-num badge-num--magenta">{{ String(l.numero_prioridad).padStart(2,'0') }}</span>
+                                <span class="linea-unidad">{{ l.unidad_medida }}</span>
+                                <span
+                                    class="linea-puede"
+                                    :class="l.ya_reporto ? 'linea-puede--reportado' : 'linea-puede--prorroga'"
+                                >
+                                    <template v-if="l.ya_reporto">✓ Reportado</template>
+                                    <template v-else>⏱ Prórroga hasta {{ l.prorroga_hasta }}</template>
+                                </span>
+                            </div>
+                            <p class="linea-indicador">{{ l.nombre_indicador }}</p>
+                            <p class="linea-prioridad">{{ l.prioridad }}</p>
+                            <div class="linea-avance">
+                                <div class="avance-track"><div class="avance-fill" :style="{ width: Math.min(l.porcentaje_avance ?? 0, 100) + '%', background: colorBarra(l.porcentaje_avance ?? 0) }"></div></div>
+                                <div class="avance-meta-row">
+                                    <span class="avance-pct">{{ l.porcentaje_avance ?? 0 }}%</span>
+                                    <span class="avance-meta">{{ fmtNum(l.ultimo_valor_avance) }} / {{ fmtNum(l.meta) }} {{ l.unidad_medida }}</span>
+                                </div>
+                            </div>
+                            <div class="linea-footer">
+                                <button
+                                    v-if="l.ya_reporto"
+                                    class="btn btn-secondary btn-sm btn-block"
+                                    @click.stop="verLinea(l); tabActiva = 'mi-avance'"
+                                >
+                                    Ver avance enviado
+                                </button>
+                                <button
+                                    v-else
+                                    class="btn btn-primary btn-sm btn-block"
+                                    @click.stop="verLinea(l); tabActiva = 'registrar'"
+                                >
+                                    <svg viewBox="0 0 20 20" fill="currentColor" style="width:13px;height:13px;margin-right:4px"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                                    Registrar avance
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Líneas cerradas -->
+                <div v-if="lineasSinProrroga.length" class="seccion-bloque">
+                    <div class="seccion-bloque-header seccion-bloque-header--cerradas">
+                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                        Líneas cerradas — solo lectura ({{ lineasSinProrroga.length }})
+                    </div>
+                    <div class="lineas-grid">
+                        <div v-for="l in lineasSinProrroga" :key="l.id" class="linea-card linea-card--cerrada" @click="verLinea(l)">
+                            <div class="linea-badges">
+                                <span class="badge-num badge-num--vino">{{ String(l.numero_eje).padStart(2,'0') }}</span>
+                                <span class="badge-num badge-num--verde">{{ String(l.numero_objetivo).padStart(2,'0') }}</span>
+                                <span class="badge-num badge-num--magenta">{{ String(l.numero_prioridad).padStart(2,'0') }}</span>
+                                <span class="linea-unidad">{{ l.unidad_medida }}</span>
+                                <span class="linea-puede linea-puede--no">Cerrada</span>
+                            </div>
+                            <p class="linea-indicador">{{ l.nombre_indicador }}</p>
+                            <p class="linea-prioridad">{{ l.prioridad }}</p>
+                            <div class="linea-avance">
+                                <div class="avance-track"><div class="avance-fill" :style="{ width: Math.min(l.porcentaje_avance ?? 0, 100) + '%', background: colorBarra(l.porcentaje_avance ?? 0) }"></div></div>
+                                <div class="avance-meta-row">
+                                    <span class="avance-pct">{{ l.porcentaje_avance ?? 0 }}%</span>
+                                    <span class="avance-meta">{{ fmtNum(l.ultimo_valor_avance) }} / {{ fmtNum(l.meta) }} {{ l.unidad_medida }}</span>
+                                </div>
+                            </div>
+                            <div class="linea-footer">
+                                <button class="btn btn-secondary btn-sm btn-block" @click.stop="verLinea(l)">Ver detalle</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </template>
+
+            <!-- ══════════════════════
+                 MODO NORMAL
+            ══════════════════════ -->
+            <div v-else class="lineas-grid">
                 <div
                     v-for="l in lineasFiltradas"
                     :key="l.id"
@@ -199,8 +371,15 @@ const avanceEsperado = computed(() => {
                         <span class="badge-num badge-num--verde">{{ String(l.numero_objetivo).padStart(2,'0') }}</span>
                         <span class="badge-num badge-num--magenta">{{ String(l.numero_prioridad).padStart(2,'0') }}</span>
                         <span class="linea-unidad">{{ l.unidad_medida }}</span>
-                        <span class="linea-puede" :class="l.puede_reportar ? 'linea-puede--si' : 'linea-puede--no'">
-                            {{ l.puede_reportar ? 'Puede reportar' : 'Sin período' }}
+                        <span
+                            class="linea-puede"
+                            :class="l.ya_reporto
+                                ? 'linea-puede--reportado'
+                                : (l.puede_reportar ? 'linea-puede--si' : 'linea-puede--no')"
+                        >
+                            <template v-if="l.ya_reporto">✓ Reportado</template>
+                            <template v-else-if="l.puede_reportar">Puede reportar</template>
+                            <template v-else>Sin período</template>
                         </span>
                     </div>
 
@@ -230,7 +409,15 @@ const avanceEsperado = computed(() => {
                     <!-- CTA -->
                     <div class="linea-footer">
                         <button
-                            v-if="l.puede_reportar"
+                            v-if="l.ya_reporto"
+                            class="btn btn-secondary btn-sm btn-block"
+                            @click.stop="verLinea(l); tabActiva = 'mi-avance'"
+                        >
+                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:13px;height:13px;margin-right:4px"><path fill-rule="evenodd" d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+                            Ver avance enviado
+                        </button>
+                        <button
+                            v-else-if="l.puede_reportar"
                             class="btn btn-primary btn-sm btn-block"
                             @click.stop="verLinea(l); tabActiva = 'registrar'"
                         >
@@ -269,10 +456,16 @@ const avanceEsperado = computed(() => {
 
                     <!-- Tabs -->
                     <div class="modal-tabs">
-                        <button :class="['tab-btn', tabActiva === 'detalle'    ? 'tab-btn--active' : '']" @click="tabActiva = 'detalle'">Detalle</button>
-                        <button :class="['tab-btn', tabActiva === 'historial'  ? 'tab-btn--active' : '']" @click="tabActiva = 'historial'">Historial</button>
+                        <button :class="['tab-btn', tabActiva === 'detalle' ? 'tab-btn--active' : '']" @click="tabActiva = 'detalle'">Detalle</button>
                         <button
-                            v-if="lineaActual?.puede_reportar"
+                            v-if="lineaActual?.ya_reporto || lineaActual?.historial_anteriores?.length"
+                            :class="['tab-btn', tabActiva === 'mi-avance' ? 'tab-btn--active' : '']"
+                            @click="tabActiva = 'mi-avance'"
+                        >
+                            Mi avance
+                        </button>
+                        <button
+                            v-if="lineaActual?.puede_reportar && !lineaActual?.ya_reporto"
                             :class="['tab-btn tab-btn--cta', tabActiva === 'registrar' ? 'tab-btn--active' : '']"
                             @click="tabActiva = 'registrar'"
                         >
@@ -338,33 +531,121 @@ const avanceEsperado = computed(() => {
                             <p class="prioridad-texto">{{ lineaActual.prioridad }}</p>
                         </template>
 
-                        <!-- ── TAB HISTORIAL ── -->
-                        <template v-else-if="tabActiva === 'historial'">
-                            <div v-if="!lineaActual.historial?.length" class="empty-state-sm">
-                                <p>No hay avances registrados para esta línea.</p>
-                            </div>
-                            <div v-else class="historial-lista">
-                                <div v-for="(h, idx) in lineaActual.historial" :key="idx" class="historial-item">
-                                    <div class="historial-item-head">
-                                        <div>
-                                            <span :class="['badge-estatus', h.estatus === 'Con avances' ? 'badge-estatus--ok' : 'badge-estatus--pend']">
-                                                {{ h.estatus }}
-                                            </span>
-                                            <span class="historial-fecha">{{ h.fecha_avance }}</span>
-                                        </div>
-                                        <span class="historial-pct">{{ Math.round((h.avance_cuantitativo ?? 0) * 100) }}%</span>
+                        <!-- ── TAB MI AVANCE (período actual + anteriores) ── -->
+                        <template v-else-if="tabActiva === 'mi-avance'">
+
+                            <!-- Bloque destacado: período actual -->
+                            <template v-if="lineaActual?.reporte_actual">
+                                <p class="seccion-label">
+                                    Período actual
+                                    <span v-if="periodo_activo?.nombre" class="seccion-label-aux">— {{ periodo_activo.nombre }}</span>
+                                </p>
+                                <div class="reporte-card">
+                                    <div class="reporte-card-head">
+                                        <span :class="['badge-estatus', lineaActual.reporte_actual.estatus === 'Con avances' ? 'badge-estatus--ok' : 'badge-estatus--pend']">
+                                            {{ lineaActual.reporte_actual.estatus }}
+                                        </span>
+                                        <span class="reporte-pct">
+                                            {{ Math.round((lineaActual.reporte_actual.avance_cuantitativo ?? 0) * 100) }}%
+                                        </span>
                                     </div>
-                                    <p class="historial-comentario">{{ h.comentario }}</p>
-                                    <div class="historial-meta">
-                                        <span>Valor: <strong>{{ fmtNum(h.avance_cualitativo) }}</strong></span>
-                                        <a v-if="h.archivo_url" :href="h.archivo_url" target="_blank" class="historial-archivo">
-                                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:12px;height:12px"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
-                                            {{ h.documento }}
+
+                                    <div class="reporte-grid">
+                                        <div class="ver-campo">
+                                            <span class="ver-label">Valor alcanzado</span>
+                                            <span class="ver-valor">
+                                                {{ fmtNum(lineaActual.reporte_actual.avance_cualitativo) }} {{ lineaActual.unidad_medida }}
+                                            </span>
+                                        </div>
+                                        <div class="ver-campo">
+                                            <span class="ver-label">Fecha del avance</span>
+                                            <span class="ver-valor">{{ lineaActual.reporte_actual.fecha_avance }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="ver-campo" style="margin-top:.75rem">
+                                        <span class="ver-label">Comentario</span>
+                                        <p class="reporte-texto">{{ lineaActual.reporte_actual.comentario }}</p>
+                                    </div>
+
+                                    <div v-if="lineaActual.reporte_actual.medio_verificacion" class="ver-campo" style="margin-top:.75rem">
+                                        <span class="ver-label">Medio de verificación</span>
+                                        <p class="reporte-texto">{{ lineaActual.reporte_actual.medio_verificacion }}</p>
+                                    </div>
+
+                                    <div
+                                        v-if="lineaActual.reporte_actual.archivo_url || lineaActual.reporte_actual.url"
+                                        class="reporte-evidencia"
+                                    >
+                                        <span class="ver-label" style="margin-bottom:.4rem">Evidencia adjunta</span>
+                                        <a
+                                            v-if="lineaActual.reporte_actual.archivo_url"
+                                            :href="lineaActual.reporte_actual.archivo_url"
+                                            target="_blank"
+                                            class="reporte-archivo"
+                                        >
+                                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+                                            {{ lineaActual.reporte_actual.documento ?? 'Descargar archivo' }}
                                         </a>
-                                        <a v-if="h.url" :href="h.url" target="_blank" class="historial-archivo">Enlace externo</a>
-                                        <span class="historial-registrado">Registrado: {{ h.fecha_registro }}</span>
+                                        <a
+                                            v-if="lineaActual.reporte_actual.url"
+                                            :href="lineaActual.reporte_actual.url"
+                                            target="_blank"
+                                            class="reporte-archivo"
+                                        >
+                                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/></svg>
+                                            {{ lineaActual.reporte_actual.url }}
+                                        </a>
+                                    </div>
+
+                                    <div class="aviso-inmutable" style="margin-top:.85rem">
+                                        <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+                                        <span>Este avance ya fue enviado y <strong>no puede editarse ni eliminarse</strong>.</span>
                                     </div>
                                 </div>
+                            </template>
+
+                            <!-- Sin avance del período actual pero hay anteriores -->
+                            <div v-else-if="lineaActual?.historial_anteriores?.length" class="empty-state-sm" style="margin-bottom:1rem">
+                                <p>Aún no has registrado avance en el período actual.</p>
+                            </div>
+
+                            <!-- Avances anteriores -->
+                            <template v-if="lineaActual?.historial_anteriores?.length">
+                                <div class="seccion-sep"></div>
+                                <p class="seccion-label">
+                                    Avances anteriores
+                                    <span class="seccion-label-aux">— últimos {{ lineaActual.historial_anteriores.length }}</span>
+                                </p>
+                                <div class="historial-lista">
+                                    <div v-for="h in lineaActual.historial_anteriores" :key="h.id" class="historial-item">
+                                        <div class="historial-item-head">
+                                            <div>
+                                                <span :class="['badge-estatus', h.estatus === 'Con avances' ? 'badge-estatus--ok' : 'badge-estatus--pend']">
+                                                    {{ h.estatus }}
+                                                </span>
+                                                <span v-if="h.periodo_nombre" class="historial-periodo">{{ h.periodo_nombre }}</span>
+                                                <span class="historial-fecha">{{ h.fecha_avance }}</span>
+                                            </div>
+                                            <span class="historial-pct">{{ Math.round((h.avance_cuantitativo ?? 0) * 100) }}%</span>
+                                        </div>
+                                        <p class="historial-comentario">{{ h.comentario }}</p>
+                                        <div class="historial-meta">
+                                            <span>Valor: <strong>{{ fmtNum(h.avance_cualitativo) }}</strong> {{ lineaActual.unidad_medida }}</span>
+                                            <a v-if="h.archivo_url" :href="h.archivo_url" target="_blank" class="historial-archivo">
+                                                <svg viewBox="0 0 20 20" fill="currentColor" style="width:12px;height:12px"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+                                                {{ h.documento }}
+                                            </a>
+                                            <a v-if="h.url" :href="h.url" target="_blank" class="historial-archivo">Enlace</a>
+                                            <span class="historial-registrado">Registrado: {{ h.fecha_registro }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Sin nada en absoluto -->
+                            <div v-if="!lineaActual?.reporte_actual && !lineaActual?.historial_anteriores?.length" class="empty-state-sm">
+                                <p>No hay avances registrados para esta línea.</p>
                             </div>
                         </template>
 
@@ -418,26 +699,46 @@ const avanceEsperado = computed(() => {
                             </div>
 
                             <div class="field">
-                                <label class="field-label">Medio de verificación</label>
+                                <label class="field-label">
+                                    Medio de verificación
+                                    <span v-if="formAvance.estatus === 'Con avances'" class="field-req">*</span>
+                                </label>
                                 <input v-model="formAvance.medio_verificacion" type="text" class="field-input" placeholder="Ej. Constancias, acta, portal institucional"/>
+                                <p v-if="formAvance.errors.medio_verificacion" class="field-error">{{ formAvance.errors.medio_verificacion }}</p>
                             </div>
 
-                            <div class="field-row">
-                                <div class="field">
-                                    <label class="field-label">Archivo de evidencia</label>
-                                    <label class="file-upload">
-                                        <input type="file" class="file-input" @change="seleccionarArchivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"/>
-                                        <span class="file-label">
-                                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                                            {{ archivoNombre || 'Seleccionar archivo' }}
-                                        </span>
-                                    </label>
-                                    <p class="field-hint">PDF, Word, Excel, imagen. Máx 10 MB.</p>
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Enlace externo</label>
-                                    <input v-model="formAvance.url" type="url" class="field-input" placeholder="https://..."/>
-                                    <p v-if="formAvance.errors.url" class="field-error">{{ formAvance.errors.url }}</p>
+                            <div class="evidencia-bloque">
+                                <p class="evidencia-bloque-titulo">
+                                    Evidencia
+                                    <span v-if="formAvance.estatus === 'Con avances'" class="field-req">*</span>
+                                </p>
+                                <p class="evidencia-bloque-hint">
+                                    <template v-if="formAvance.estatus === 'Con avances'">
+                                        Adjunta un archivo, un enlace o ambos. Al menos uno es obligatorio cuando reportas avance.
+                                    </template>
+                                    <template v-else>
+                                        Opcional cuando reportas "sin avances".
+                                    </template>
+                                </p>
+                                <div class="field-row">
+                                    <div class="field">
+                                        <label class="field-label">Archivo de evidencia</label>
+                                        <label class="file-upload">
+                                            <input type="file" class="file-input" @change="seleccionarArchivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"/>
+                                            <span class="file-label">
+                                                <svg viewBox="0 0 20 20" fill="currentColor" style="width:14px;height:14px"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                                                {{ archivoNombre || 'Seleccionar archivo' }}
+                                            </span>
+                                        </label>
+                                        <p class="field-hint">PDF, Word, Excel, imagen. Máx 10 MB.</p>
+                                        <p v-if="formAvance.errors.archivo" class="field-error">{{ formAvance.errors.archivo }}</p>
+                                    </div>
+                                    <div class="field">
+                                        <label class="field-label">Enlace externo</label>
+                                        <input v-model="formAvance.url" type="url" class="field-input" placeholder="https://..."/>
+                                        <p class="field-hint">URL pública que sirva como soporte.</p>
+                                        <p v-if="formAvance.errors.url" class="field-error">{{ formAvance.errors.url }}</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -457,7 +758,7 @@ const avanceEsperado = computed(() => {
                     <div class="modal-foot">
                         <button class="btn btn-ghost" @click="cerrarModal">Cerrar</button>
                         <button
-                            v-if="tabActiva === 'registrar' && lineaActual?.puede_reportar"
+                            v-if="tabActiva === 'registrar' && lineaActual?.puede_reportar && !lineaActual?.ya_reporto"
                             class="btn btn-primary"
                             :disabled="formAvance.processing"
                             @click="enviarAvance"
@@ -465,6 +766,34 @@ const avanceEsperado = computed(() => {
                             <svg v-if="formAvance.processing" class="btn-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                             {{ formAvance.processing ? 'Guardando...' : 'Guardar avance' }}
                         </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- ══════════════════════════════════════════════════════════
+             MODAL ERRORES DE VALIDACIÓN
+        ══════════════════════════════════════════════════════════ -->
+        <Teleport to="body">
+            <div v-if="modalErrores" class="modal-overlay modal-overlay--top" @click.self="cerrarModalErrores">
+                <div class="modal modal--alerta">
+                    <div class="modal-alerta-head">
+                        <div class="modal-alerta-icon">
+                            <svg viewBox="0 0 20 20" fill="currentColor" style="width:20px;height:20px"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                        </div>
+                        <div>
+                            <h3 class="modal-alerta-titulo">Revisa la información</h3>
+                            <p class="modal-alerta-sub">No se pudo guardar el avance porque hay {{ erroresLista.length }} {{ erroresLista.length === 1 ? 'campo con error' : 'campos con error' }}:</p>
+                        </div>
+                    </div>
+                    <ul class="modal-alerta-lista">
+                        <li v-for="(e, idx) in erroresLista" :key="idx" class="modal-alerta-item">
+                            <span class="modal-alerta-campo">{{ e.campo }}:</span>
+                            <span class="modal-alerta-msg">{{ e.mensaje }}</span>
+                        </li>
+                    </ul>
+                    <div class="modal-alerta-foot">
+                        <button class="btn btn-primary" @click="cerrarModalErrores">Entendido, corregir</button>
                     </div>
                 </div>
             </div>
@@ -487,6 +816,7 @@ const avanceEsperado = computed(() => {
 
 .periodo-banner { display:inline-flex;align-items:center;gap:.5rem;padding:.5rem 1rem;background:var(--color-verde-lt);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--color-gris-700);border:1px solid var(--color-verde); }
 .periodo-banner--cerrado { background:var(--color-gris-100);border-color:var(--color-gris-300);color:var(--color-gris-500); }
+.periodo-banner--prorroga { background:#ede9fe;border-color:#c4b5fd;color:#5b21b6; }
 
 .filtros-bar { display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap; }
 .search-bar { flex:1;min-width:200px;display:flex;align-items:center;gap:.75rem;background:var(--color-blanco);border:1px solid var(--color-gris-200);border-radius:var(--radius-md);padding:.6rem 1rem;box-shadow:var(--shadow-sm); }
@@ -508,8 +838,16 @@ const avanceEsperado = computed(() => {
 .linea-badges { display:flex;align-items:center;gap:.4rem;padding:.75rem 1rem .5rem;flex-wrap:wrap; }
 .linea-unidad { font-size:11px;font-weight:600;color:var(--color-gris-500);background:var(--color-gris-100);padding:2px 8px;border-radius:var(--radius-full);margin-left:auto; }
 .linea-puede { font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--radius-full); }
-.linea-puede--si  { background:var(--color-verde-lt);color:var(--color-verde); }
-.linea-puede--no  { background:var(--color-gris-200);color:var(--color-gris-500); }
+.linea-puede--si        { background:var(--color-verde-lt);color:var(--color-verde); }
+.linea-puede--no        { background:var(--color-gris-200);color:var(--color-gris-500); }
+.linea-puede--prorroga  { background:#ede9fe;color:#5b21b6; }
+.linea-puede--reportado { background:#dbeafe;color:#1e40af; }
+.linea-card--prorroga  { border-color:#c4b5fd;box-shadow:0 0 0 1px #ede9fe; }
+.linea-card--cerrada   { opacity:.75; }
+.seccion-bloque { margin-bottom:1.5rem; }
+.seccion-bloque-header { display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);font-size:var(--text-sm);font-weight:700;margin-bottom:.75rem; }
+.seccion-bloque-header--prorroga { background:#ede9fe;color:#5b21b6; }
+.seccion-bloque-header--cerradas { background:var(--color-gris-100);color:var(--color-gris-500); }
 .linea-indicador { font-size:var(--text-sm);font-weight:600;color:var(--color-gris-800);padding:0 1rem .25rem;line-height:1.4; }
 .linea-prioridad { font-size:var(--text-xs);color:var(--color-gris-500);padding:0 1rem .75rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
 .linea-avance { padding:0 1rem .75rem; }
@@ -598,6 +936,36 @@ const avanceEsperado = computed(() => {
 .file-label:hover { border-color:var(--color-verde);color:var(--color-verde); }
 
 .aviso-inmutable { display:flex;align-items:flex-start;gap:.5rem;padding:.65rem .85rem;background:var(--color-vino-lt);border-radius:var(--radius-md);font-size:var(--text-xs);color:var(--color-vino);line-height:1.5;border:1px solid var(--color-vino); }
+
+.evidencia-bloque        { border:1px dashed var(--color-gris-300);border-radius:var(--radius-md);padding:.85rem 1rem;background:var(--color-gris-50, #fafafa);margin-top:.25rem; }
+.evidencia-bloque-titulo { font-size:var(--text-sm);font-weight:700;color:var(--color-gris-700);margin-bottom:.15rem; }
+.evidencia-bloque-hint   { font-size:var(--text-xs);color:var(--color-gris-500);margin-bottom:.65rem; }
+
+/* ── Tab "Mi avance" (período actual + anteriores) ───────────────────────── */
+.seccion-label-aux   { font-weight:400;color:var(--color-gris-500);font-size:var(--text-xs);margin-left:.3rem; }
+.historial-periodo   { display:inline-block;font-size:11px;font-weight:600;color:var(--color-vino);background:var(--color-vino-lt);padding:2px 8px;border-radius:var(--radius-full);margin:0 .4rem; }
+.reporte-card        { background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--radius-md);padding:1rem 1.25rem; }
+.reporte-card-head   { display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem; }
+.reporte-pct         { font-size:var(--text-2xl);font-weight:700;color:#0369a1; }
+.reporte-grid        { display:grid;grid-template-columns:1fr 1fr;gap:.75rem; }
+.reporte-texto       { font-size:var(--text-sm);color:var(--color-gris-700);line-height:1.5;margin-top:.2rem;white-space:pre-wrap;word-break:break-word; }
+.reporte-evidencia   { display:flex;flex-direction:column;gap:.4rem;margin-top:.85rem;padding-top:.75rem;border-top:1px solid #bae6fd; }
+.reporte-archivo     { display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .75rem;background:var(--color-blanco);border:1px solid var(--color-gris-200);border-radius:var(--radius-md);color:var(--color-verde);font-size:var(--text-sm);font-weight:600;text-decoration:none;transition:all var(--transition-base, .15s);word-break:break-all; }
+.reporte-archivo:hover { background:var(--color-verde-lt);border-color:var(--color-verde); }
+
+/* ── Modal de alerta de errores ──────────────────────────────────────────── */
+.modal-overlay--top   { align-items:flex-start;padding-top:8vh; }
+.modal--alerta        { max-width:520px;width:100%;background:var(--color-blanco);border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;border-top:4px solid var(--color-vino); }
+.modal-alerta-head    { display:flex;gap:.85rem;padding:1.25rem 1.25rem .5rem; }
+.modal-alerta-icon    { width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--color-vino-lt);color:var(--color-vino);display:flex;align-items:center;justify-content:center; }
+.modal-alerta-titulo  { font-family:var(--font-display);font-size:var(--text-lg);color:var(--color-vino);margin:0; }
+.modal-alerta-sub     { font-size:var(--text-sm);color:var(--color-gris-600);margin:.2rem 0 0;line-height:1.4; }
+.modal-alerta-lista   { list-style:none;padding:.75rem 1.25rem;margin:0;max-height:50vh;overflow-y:auto; }
+.modal-alerta-item    { padding:.65rem .85rem;background:var(--color-vino-lt);border-left:3px solid var(--color-vino);border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:var(--text-sm);color:var(--color-gris-800);line-height:1.5;margin-bottom:.5rem; }
+.modal-alerta-item:last-child { margin-bottom:0; }
+.modal-alerta-campo   { font-weight:700;color:var(--color-vino);margin-right:.35rem; }
+.modal-alerta-msg     { color:var(--color-gris-700); }
+.modal-alerta-foot    { display:flex;justify-content:flex-end;padding:.85rem 1.25rem 1.25rem;background:var(--color-gris-50, #fafafa);border-top:1px solid var(--color-gris-200); }
 
 .btn-spin { animation:spin .8s linear infinite; }
 @keyframes spin { to{transform:rotate(360deg)} }
